@@ -1,65 +1,80 @@
-# Architecture (intended)
+# Architecture
 
-This document describes the model abstractCORE is being built around. Parts marked *(prototype)* are demonstrated in the HTML prototypes; everything else is design, not implementation.
+## Principle
+
+The person is the **architect**; the AI is the **assistant**. The architect works at high levels of abstraction and keeps a high-level overview of every decision the AI takes. Code is the lowest level of detail: available, never required. Everything below serves that.
 
 ## 1. The layered graph
 
-A project is a single graph of **nodes** arranged in **layers of abstraction**. A node can contain a sub-graph, so any node can be opened to reveal the more specific nodes that make it up.
+A project is one graph of **nodes**. Containment (`parent`) makes a tree: a node is made of its children, and depth is the level of abstraction. Each project names its layers, for example `["The idea", "Core parts", "How it works", "Functions"]`.
 
-| Layer | Answers | Example (stem separation tool) |
-|---|---|---|
-| L0 – Idea | What is this for? | "A stem separation tool" |
-| L1 – Core parts | What are the major capabilities and how do they relate? | Load a song → Split into stems → Listen / Save |
-| L2 – Behaviour | How does each part work, and what flows between parts? | Send song to a separation service → Get four stems back |
-| L3 – Functions | What code does the work? | `runModel(audio)`, `writeWav(stem, name)` |
+**Flow edges** (`{from, to, label}`) connect parts that pass data or control, at any depth: `load → split : "The song"`.
 
-Two kinds of relationship exist:
+**Level of detail.** Every view takes a `maxDepth`. Parts deeper than it fold into their ancestor ("+8 more detailed"), and edges between folded parts are lifted to the visible ancestors or dropped when both ends fold into the same one. The architect chooses how deep to look. Code lives on function-level nodes and is shown only on request.
 
-- **Containment** (parent → child): a node is made of its children. Gives the tree / nesting. *(prototype)*
-- **Flow edges** (node → node, labelled): data or control passing between siblings, e.g. `split → save : "Four stems"`. *(prototype)*
+## 2. Conditional parts
 
-## 2. Node model (draft)
+A part can exist only because of a choice. Options, suggestions and AI decisions can list `spawns: [nodeIds]`:
 
-```jsonc
-{
-  "id": "split",
-  "parent": "tool",            // containment
-  "layer": 1,
-  "title": "Split into stems",
-  "description": "Vocals, drums, bass and everything else, as separate tracks.",
-  "author": "user" | "ai",     // who created the node
-  "decision": {                // present when the AI chose something on the user's behalf
-    "state": "open" | "accepted" | "overridden",
-    "text": "Uses an online separation service.",
-    "why": "Fastest to build. Trade-offs: cost per song, needs internet.",
-    "alternatives": [{ "label": "Run it on the user's computer" }]
-  },
-  "questions": [{ "kind": "must" | "ask", "text": "...", "default": "..." }],
-  "needs": ["A payment provider account"],   // requirements implied by choices
-  "code": { "lang": "cpp", "source": "..." } // leaf / function level only
-}
+| Source | The spawned parts exist while… |
+|---|---|
+| A question option | that option is chosen (and the question is visible) |
+| A suggestion | the suggestion is accepted |
+| An AI decision (`decision.spawns`) | the AI's choice stands (not overridden) |
+| An alternative (`alternatives[i].spawns`) | the architect overrode the decision with that alternative |
+
+A node is **active** when its parent is active and, if it is conditional, at least one source fires on an active owner. Undoing a choice removes the whole branch beneath it. Overriding a decision swaps one branch for another. Nothing is deleted from the file, so going back is lossless. Flow edges are active only when both ends are.
+
+## 3. Who decides what
+
+| Element | Meaning |
+|---|---|
+| `question.kind = "must"` | Only the architect can answer, with a `why`. Cannot be skipped. `status().ready` is false while any are open. |
+| `question.kind = "ask"` | Helps the AI. Skipping applies `default`, and that is recorded. |
+| `decision` | The AI's choice, its `why`, and `alternatives`. State: `open → accepted / overridden`. |
+| `suggestion` | Optional idea from the AI: `open → accepted / dismissed`. |
+| `author` | `user`, `ai` or `doc` (taken from a library's documentation). |
+
+## 4. The decision ledger
+
+`ledger(project)` walks the active graph and returns every choice the AI made on the architect's behalf:
+
+- **decision**: an approach the AI picked. Overridden entries keep the AI's original proposal next to the architect's choice.
+- **default**: a skipped question, with the default the AI applied.
+- **addition**: a part the AI added that the architect never described. It counts as reviewed once the architect keeps it (`reviewPart`) or accepted the suggestion that created it.
+
+Each entry carries `review: "open" | "accepted" | "overridden"`. This is the overview that makes abstention safe: you don't read the code, but nothing the AI chose is invisible.
+
+## 5. Status and needs
+
+`status(project)` gives open and answered must-decide questions, defaults, open decisions, open suggestions, ownership counts (`user` / `ai` / `doc`), progress, and **needs**: the plain-language requirements implied by current choices ("A payment provider account"), de-duplicated in graph order. `nextQuestion` asks broadest-first, so each answer can open the more specific parts beneath it.
+
+## 6. Operations and audit
+
+Every operation (`answer`, `toggle`, `skip`, `unanswer`, `acceptSuggestion`, `dismissSuggestion`, `acceptDecision`, `overrideDecision`, `reopenDecision`, `reviewPart`) is pure: it returns a new project and appends a `log` entry. A list of past projects is a free undo stack. The log is a durable audit trail inside the project file.
+
+## 7. File format
+
+One JSON file per project (`.acore.json`), `format: "abstractcore/0.1"`, described by [`schema/abstractcore.schema.json`](../schema/abstractcore.schema.json). `validate()` adds structural checks the schema can't express: parent cycles, dangling spawns and edges, answers that aren't options, a must-decide question marked skipped.
+
+## 8. Code layout
+
+```
+src/model.ts     types: Project, GraphNode, Question, Decision, Suggestion, Edge, LogEntry
+src/graph.ts     activation (conditional parts), children, paths, layers, walk, active edges
+src/status.ts    status, needs, ownership, nextQuestion, ledger
+src/ops.ts       pure operations with audit log
+src/validate.ts  validate, load, save
+src/render.ts    text tree, Mermaid (both level-of-detail aware), ledger and status text
+src/cli.ts       acore command
+demo/app.ts      architect view, drawing only; all state changes go through src/
 ```
 
-Edges: `{ "from": "split", "to": "save", "label": "Four stems" }`.
+## 9. Next: where the AI plugs in
 
-## 3. Two lenses on one graph *(prototype)*
+The engine is deliberately model-agnostic. The planned AI layer produces and edits the same structures:
 
-- **Ideas lens** – only what the person described. Sparse and in their words.
-- **System lens** – a complete, buildable version the AI maintains in the background, filling every gap. Each gap-fill is tagged as an AI decision with reasoning and alternatives. As the person gets more specific, AI-filled nodes are replaced by theirs.
-
-## 4. Decision ownership *(prototype)*
-
-Every open point is classified:
-
-- **Must decide** – product, business or legal choices the AI must not make (returns policy, data deletion, pricing). Building does not proceed around them.
-- **Question** – helps the AI; skipping applies a stated default, recorded as such.
-- **Suggestion** – optional additions the AI noticed.
-
-## 5. Planned components
-
-1. **Graph core** – typed node/edge store, layering rules, validation, JSON serialization, change history.
-2. **Editor** – canvas for nesting, zooming between layers and editing flow edges.
-3. **Intent → graph** – an LLM turns natural-language descriptions into nodes at the right layer, asking instead of guessing on must-decide points.
-4. **Code ↔ graph** – generate code from function-level nodes; and the reverse, read an existing codebase into a layered graph.
-5. **Change propagation** – when a higher-layer node changes, mark and regenerate affected nodes beneath it, with a reviewable diff.
-6. **Audit trail** – log of every AI decision, override and default, exportable with the project.
+1. **Intent → graph**: from a description, propose nodes at the right layer. Must-decide points become `must` questions instead of guesses, and every choice becomes a `decision` with `why` and `alternatives`.
+2. **Graph → code**: generate function-level code from the nodes above it, so code is always traceable to an architect-level decision.
+3. **Code → graph**: read an existing codebase into a layered graph with its implicit decisions surfaced in the ledger.
+4. **Change propagation**: when the architect changes a high-level node, regenerate only the affected branch and show the change as a ledger diff.
