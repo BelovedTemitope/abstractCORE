@@ -1,0 +1,1261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Idea graph studio: a stem separation tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --canvas:#ECEEF3; --dot:#C9CEDA; --surface:#FFFFFF; --surface-2:#F4F5F9; --ink:#1B2130; --ink-2:#5A6275; --line:#D5D9E3;
+  --you:#0E7C66; --ai:#6B4FD8; --lib:#A86A12; --doc:#7A6A55; --flag:#CF3F28; --flag-bg:#FCEBE7; --sys:#3B5FA8; --ext:#6F7788;
+  --edge:#8D95A8; --hi:#1B2130;
+  --code-bg:#1C2230; --code-ink:#DCE2EE; --code-cm:#8C97AD; --code-st:#A9D8A2; --code-kw:#98B9FF;
+  color-scheme:light; box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --canvas:#151923; --dot:#2A3040; --surface:#1F2431; --surface-2:#191E29; --ink:#E4E8F1; --ink-2:#9AA3B6; --line:#323A4B;
+    --you:#43C6A6; --ai:#A794FF; --lib:#E0A548; --doc:#BFAE95; --flag:#FF7A63; --flag-bg:#3A1F1A; --sys:#86A7F0; --ext:#9AA3B6;
+    --edge:#6E7890; --hi:#E4E8F1; --code-bg:#121620;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --canvas:#151923; --dot:#2A3040; --surface:#1F2431; --surface-2:#191E29; --ink:#E4E8F1; --ink-2:#9AA3B6; --line:#323A4B;
+  --you:#43C6A6; --ai:#A794FF; --lib:#E0A548; --doc:#BFAE95; --flag:#FF7A63; --flag-bg:#3A1F1A; --sys:#86A7F0; --ext:#9AA3B6;
+  --edge:#6E7890; --hi:#E4E8F1; --code-bg:#121620;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;overflow:hidden;background:var(--canvas);color:var(--ink);
+  font-family:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5}
+button,input,textarea,select{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2.5px solid var(--ai);outline-offset:2px}
+.app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr)}
+
+/* Header */
+.top{background:var(--surface);border-bottom:1px solid var(--line);padding:9px 16px 8px;display:grid;gap:8px}
+.r1,.r2{display:flex;align-items:center;gap:12px;justify-content:space-between;min-width:0}
+.brand{font-weight:700;font-size:17px;letter-spacing:-.01em;white-space:nowrap}
+.steps{display:flex;align-items:center;gap:6px;font-size:13.5px}
+.step{border:1px solid var(--line);background:var(--surface-2);border-radius:20px;padding:3px 11px;color:var(--ink-2);white-space:nowrap;font-weight:600}
+.step.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+button.step{cursor:pointer}
+button.step:hover{border-color:var(--ink-2)}
+.steps .arrow{color:var(--ink-2)}
+.restart{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:3px 10px;cursor:pointer;font-size:13.5px;white-space:nowrap}
+.crumbs{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.up{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:3px 10px;cursor:pointer;font-size:14px;flex:none}
+.up:disabled{opacity:.4;cursor:default}
+.crumbs ol{list-style:none;margin:0;padding:0;display:flex;align-items:center;gap:4px;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+.crumbs li{display:flex;align-items:center;gap:4px;font-size:14px}
+.crumbs li+li::before{content:"›";color:var(--ink-2)}
+.crumbs li button{border:0;background:none;padding:2px 4px;cursor:pointer;color:var(--ink-2);border-radius:5px}
+.crumbs li button:hover{color:var(--ink);text-decoration:underline}
+.crumbs [aria-current]{font-weight:700;padding:2px 4px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;padding:2px;background:var(--surface-2);flex:none}
+.seg button{border:0;background:transparent;padding:4px 13px;border-radius:7px;cursor:pointer;font-weight:600;font-size:14px;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.mtabs{display:none}
+
+/* Main */
+.main{display:grid;grid-template-columns:minmax(0,1fr) 380px;min-height:0}
+.stagewrap{position:relative;min-height:0;overflow:hidden}
+.canvas{position:absolute;inset:0;overflow:auto;display:flex;
+  background-image:radial-gradient(var(--dot) 1.1px,transparent 1.3px);background-size:20px 20px}
+.stage{position:relative;margin:auto;flex:none}
+.lensnote{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:absolute;top:12px;left:12px;z-index:3;font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:3px 11px;color:var(--ink-2);max-width:calc(100% - 170px)}
+.lensnote b{color:var(--ink)}
+.addbtn{position:absolute;top:10px;right:12px;z-index:3;border:0;background:var(--you);color:#fff;border-radius:10px;padding:7px 13px;font-weight:700;cursor:pointer}
+.hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:2;font-size:13px;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 12px;white-space:nowrap}
+.empty{margin:auto;max-width:360px;text-align:center;padding:24px;color:var(--ink-2)}
+.empty h3{color:var(--ink);margin:0 0 6px;font-size:18px}
+.empty button{margin-top:12px}
+
+.edges{position:absolute;inset:0;overflow:visible;pointer-events:none}
+.edges path{fill:none;stroke:var(--edge);stroke-width:1.8}
+.edges path.hi{stroke:var(--hi);stroke-width:2.4}
+.edges path.dim,.edges text.dim{opacity:.25}
+.edges circle{fill:var(--surface);stroke:var(--edge);stroke-width:1.6}
+.edges text{font-size:11.5px;fill:var(--ink-2);paint-order:stroke;stroke:var(--canvas);stroke-width:4px;stroke-linejoin:round}
+
+.node{position:absolute;--tc:var(--you);display:flex;flex-direction:column;padding:0;text-align:left;cursor:pointer;z-index:1;
+  background:var(--surface);border:1.6px solid color-mix(in srgb,var(--tc) 55%,var(--line));border-radius:11px}
+.node .hd{display:flex;justify-content:space-between;gap:6px;align-items:center;background:color-mix(in srgb,var(--tc) 14%,var(--surface));color:var(--tc);font-size:12px;font-weight:700;padding:3px 10px;border-radius:9px 9px 0 0;white-space:nowrap}
+.node .hd .dec{color:var(--ai);font-weight:700;font-size:11px;background:var(--surface);border-radius:10px;padding:0 6px}
+.node .bd{flex:1;overflow:hidden;padding:6px 10px 8px}
+.node .tt{font-weight:650;font-size:14.5px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.node .sm{font-size:12.5px;color:var(--ink-2);line-height:1.3;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.node.compact .sm{display:none}
+.node.stack{box-shadow:5px 5px 0 -1.6px var(--surface-2),5px 5px 0 0 color-mix(in srgb,var(--tc) 40%,var(--line))}
+.node.by-ai{--tc:var(--ai)}
+.node.lib{--tc:var(--lib);border-width:3px;border-style:double}
+.node.libpart{--tc:var(--doc);border-style:dashed}
+.node.sys{--tc:var(--sys)}
+.node.sys.ext{--tc:var(--ext);border-style:dashed}
+.node.sys.draft{border-style:dashed}
+.node.sys.slib{--tc:var(--lib);border-width:3px;border-style:double}
+.node.sys.ph{--tc:var(--ext);border-style:dashed;opacity:.8}
+.node.sel{outline:2.5px solid var(--tc);outline-offset:3px}
+.node:hover{border-color:var(--tc)}
+.node:focus-visible{outline:2.5px solid var(--ink);outline-offset:3px}
+.badge{position:absolute;top:-10px;right:-10px;width:23px;height:23px;border-radius:12px;background:var(--flag);color:#fff;font-size:13px;font-weight:800;display:grid;place-items:center;border:2px solid var(--canvas)}
+.appear{animation:appear .4s ease-out}
+@keyframes appear{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
+.anim-in{animation:zin .28s cubic-bezier(.2,.7,.2,1)}
+.anim-out{animation:zout .24s cubic-bezier(.2,.7,.2,1)}
+@keyframes zin{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+@keyframes zout{from{opacity:0;transform:scale(1.06)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.appear,.anim-in,.anim-out{animation:none}}
+
+/* Sheet */
+.stagewrap.sheet-open .canvas{right:392px}
+.stagewrap.sheet-open .addbtn{right:404px}
+.stagewrap.sheet-open .sheet{top:10px;right:10px;bottom:10px;left:auto;width:372px;max-height:none}
+.sheet{position:absolute;left:12px;bottom:12px;z-index:4;width:min(540px,calc(100% - 24px));max-height:60%;overflow:auto;
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(20,25,40,.18);padding:14px 16px 16px}
+.sheet[hidden]{display:none}
+.shead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.close{border:0;background:var(--surface-2);border-radius:8px;width:30px;height:30px;cursor:pointer;flex:none;font-size:18px;line-height:1}
+.chip{display:inline-block;font-size:12.5px;font-weight:700;padding:1px 9px;border-radius:20px;color:var(--tc);background:color-mix(in srgb,var(--tc) 14%,transparent)}
+.sheet h3{font-size:19px;margin:4px 0 4px;line-height:1.25}
+.sheet p{margin:0 0 8px}
+.muted{color:var(--ink-2);font-size:14px}
+.flagbox{background:var(--flag-bg);border:1.5px solid var(--flag);border-radius:12px;padding:10px 12px;margin:10px 0}
+.flagbox strong{color:var(--flag);font-size:13px;display:block}
+.flagbox p{margin:2px 0 8px;font-size:14.5px}
+.decbox{border:1.5px solid color-mix(in srgb,var(--ai) 45%,var(--line));background:color-mix(in srgb,var(--ai) 7%,var(--surface));border-radius:12px;padding:10px 12px;margin:10px 0}
+.decbox strong{color:var(--ai);font-size:13px;display:block}
+.decbox .dt{font-size:15px;font-weight:600;margin:2px 0 4px}
+.decbox .why{font-size:14px;color:var(--ink-2);margin:0 0 8px}
+.decbox.mine{border-color:color-mix(in srgb,var(--you) 50%,var(--line));background:color-mix(in srgb,var(--you) 7%,var(--surface))}
+.decbox.mine strong{color:var(--you)}
+.row{display:flex;flex-wrap:wrap;gap:6px}
+.btn{border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer;background:var(--ink);color:var(--surface);font-size:14px}
+.btn.alt{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
+.btn.alt:hover{border-color:var(--ink-2)}
+.btn.you{background:var(--you);color:#fff}
+.btn.full{width:100%;margin-top:10px;padding:9px 12px}
+.opts{display:grid;gap:6px;margin-top:4px}
+.opts .btn{text-align:left}
+textarea,input[type=text],select{width:100%;border:1.5px solid var(--line);border-radius:9px;padding:7px 10px;background:var(--surface-2)}
+textarea{resize:vertical;min-height:60px}
+label.f{display:block;font-size:13px;font-weight:600;color:var(--ink-2);margin:8px 0 3px}
+.conn{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px;font-size:14px}
+.conn li{color:var(--ink-2)}
+.conn b{color:var(--ink);font-weight:600}
+.hbtns{display:flex;gap:6px;flex:none}
+.sh{display:none}
+.take{border:0;background:var(--you);color:#fff;border-radius:8px;padding:4px 11px;cursor:pointer;font-size:13.5px;font-weight:700;white-space:nowrap}
+.logbtn{position:absolute;top:10px;right:12px;z-index:3;border:1.5px solid color-mix(in srgb,var(--ai) 45%,var(--line));background:var(--surface);color:var(--ink);border-radius:10px;padding:6px 12px;font-weight:700;cursor:pointer}
+.stagewrap.sheet-open .logbtn{right:404px}
+.stats div:first-child{grid-column:1/-1}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0 4px}
+.stats div{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:7px 9px;font-size:13.5px;font-weight:600;line-height:1.3}
+.stats span{display:block;font-size:12px;color:var(--ink-2);font-weight:600;margin-bottom:2px}
+.log{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.log li{border-left:3px solid var(--ai);padding:2px 0 2px 10px;font-size:14px}
+.log b{display:block;font-size:12.5px;color:var(--ai)}
+.node.sys.s-you{--tc:var(--you)}
+.node.sys.s-ai{--tc:var(--ai)}
+.sec{font-size:13px;font-weight:700;color:var(--ink-2);margin:12px 0 2px}
+.linkbtn{border:0;background:none;padding:0;color:var(--flag);cursor:pointer;text-decoration:underline;font-size:13.5px;margin-top:10px}
+pre.code{margin:8px 0 0;background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:10px 0;overflow:auto;
+  font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.6}
+pre.code code{display:inline-block;min-width:100%}
+.ln{display:block;padding:0 14px;white-space:pre}
+.ln.dec{box-shadow:inset 3px 0 0 var(--ai);background:color-mix(in srgb,var(--ai) 18%,transparent)}
+.ln.mine{box-shadow:inset 3px 0 0 var(--you);background:color-mix(in srgb,var(--you) 18%,transparent)}
+.cm{color:var(--code-cm);font-style:italic}.st{color:var(--code-st)}.kw{color:var(--code-kw)}
+
+/* Chat */
+.chat{background:var(--surface);border-left:1px solid var(--line);display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:0}
+.chathead{padding:12px 16px 8px;border-bottom:1px solid var(--line)}
+.chathead b{font-size:15.5px}
+.chathead p{margin:2px 0 0;font-size:13px;color:var(--ink-2)}
+.msgs{overflow:auto;padding:14px 14px 6px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:88%;padding:9px 12px;border-radius:14px;font-size:14.5px;line-height:1.45}
+.msg.ai{background:color-mix(in srgb,var(--ai) 10%,var(--surface-2));border:1px solid color-mix(in srgb,var(--ai) 25%,var(--line));border-bottom-left-radius:4px;align-self:flex-start}
+.msg.you{background:var(--ink);color:var(--surface);border-bottom-right-radius:4px;align-self:flex-end}
+.msg.sys{align-self:center;background:none;color:var(--ink-2);font-size:12.5px;padding:0 4px;text-align:center}
+.typing{display:inline-flex;gap:4px;padding:12px 14px}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--ai);opacity:.5;animation:blink 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes blink{50%{opacity:1}}
+.composer{border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px))}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.chips button{border:1.5px solid color-mix(in srgb,var(--ai) 40%,var(--line));background:var(--surface);color:var(--ink);border-radius:14px;padding:4px 10px;font-size:13.5px;cursor:pointer;text-align:left}
+.chips button:hover{border-color:var(--ai)}
+.chips button:disabled{opacity:.5;cursor:default}
+.inrow{display:flex;gap:6px}
+.inrow input{flex:1}
+.demo{font-size:12px;color:var(--ink-2);margin-top:6px}
+
+@media (max-width:860px){
+  .main{grid-template-columns:minmax(0,1fr)}
+  .chat{border-left:0}
+  .main[data-tab="graph"] .chat{display:none}
+  .main[data-tab="chat"] .stagewrap{display:none}
+  .mtabs{display:flex;gap:4px}
+  .mtabs button{border:0;background:none;padding:5px 12px;border-radius:8px;font-weight:700;color:var(--ink-2);cursor:pointer;font-size:14px}
+  .mtabs button[aria-pressed="true"]{background:color-mix(in srgb,var(--ai) 14%,var(--surface));color:var(--ink)}
+  .steps .arrow,.steps .step:not(.on),.brand{display:none}
+  .stagewrap.sheet-open .canvas{right:0;padding-bottom:60vh}
+  .stagewrap.sheet-open .addbtn,.stagewrap.sheet-open .logbtn{right:12px}
+  .stats{grid-template-columns:1fr 1fr}
+  .lg{display:none} .sh{display:inline}
+  .r1{gap:6px}
+  .restart,.take{padding:4px 9px}
+  .stagewrap.sheet-open .sheet{top:auto;left:8px;right:auto;bottom:8px;width:calc(100% - 16px);max-height:58%}
+  .top{padding:8px 12px}
+  .lensnote{max-width:calc(100% - 140px)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="r1">
+      <span class="brand">Idea graph studio</span>
+      <div class="steps" id="steps"></div>
+      <div class="hbtns"><button class="take" data-act="take">Take it away</button><button class="restart" data-act="restart">Restart</button></div>
+    </div>
+    <div class="r2">
+      <nav class="crumbs" aria-label="Levels">
+        <button class="up" id="up" data-act="up" aria-label="Up one level">↑ Up</button>
+        <ol id="crumbs"></ol>
+      </nav>
+      <div class="seg" role="group" aria-label="Lens">
+        <button data-act="lens" data-l="ideas">Ideas</button>
+        <button data-act="lens" data-l="system">System</button>
+      </div>
+    </div>
+    <div class="mtabs" role="group" aria-label="Panels">
+      <button data-act="tab" data-t="graph">Graph</button>
+      <button data-act="tab" data-t="chat">Assistant</button>
+    </div>
+  </header>
+  <div class="main" id="main" data-tab="graph">
+    <div class="stagewrap">
+      <main class="canvas" id="canvas"></main>
+      <div class="lensnote" id="lensnote"></div>
+      <button class="addbtn" id="addbtn" data-act="add">+ Add node</button>
+      <button class="logbtn" id="logbtn" data-act="log" hidden><span class="lg">What changed</span><span class="sh">Changes</span></button>
+      <div class="hint" id="hint">Tap a node to see it. Tap again to open it.</div>
+      <aside class="sheet" id="sheet" hidden aria-live="polite"></aside>
+    </div>
+    <section class="chat" aria-label="Assistant">
+      <div class="chathead"><b>Assistant</b><p>Tell it what you want when you’re not sure how to make the node.</p></div>
+      <div class="msgs" id="msgs"></div>
+      <div class="composer">
+        <div class="chips" id="chips"></div>
+        <form class="inrow" id="form" autocomplete="off">
+          <input type="text" id="inp" placeholder="Describe what you want…" aria-label="Message">
+          <button class="btn" type="submit">Send</button>
+        </form>
+        <div class="demo">Scripted demo: tap a suggestion, or type something close to one.</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ================= State ================= */
+let S;
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+function addNode(id, parent, title, desc, by, extra){
+  S.nodes[id] = Object.assign({id, parent, title, desc, by, kind:"idea"}, extra || {});
+}
+const kids = id => Object.values(S.nodes).filter(n => n.parent === id).map(n => n.id);
+function removeNode(id){
+  kids(id).forEach(removeNode);
+  delete S.nodes[id];
+  S.edges = S.edges.filter(e => e[0] !== id && e[1] !== id);
+}
+const has = id => !!S.nodes[id];
+function pathTo(id){ const p = []; let c = S.nodes[id] && S.nodes[id].parent; while (c && c !== "root"){ p.unshift(c); c = S.nodes[c].parent; } return p; }
+const cur = () => S.path.length ? S.path[S.path.length - 1] : "root";
+const titleOf = id => id === "root" ? "My idea" : S.nodes[id].title;
+
+function reset(){
+  S = {nodes:{}, edges:[], path:[], sel:null, lens:"ideas", phase:1, done:{}, sep:"api", sepText:"", formats:null, model:null,
+       changing:null, adding:false, chat:[], typing:false, tab:"graph", uc:0, sysSel:null, sysPath:[], busy:false, seen:null,
+       sysSig:null, sysTitles:{}, sysAreas:{}, sysVersion:1, sysChanged:new Set(), sysAdded:new Set(), changelog:[], sheetMode:null, addPrefill:"", dlStatus:""};
+  addNode("tool", "root", "A stem separation tool", "Split any song into separate parts: vocals, drums, bass and the rest.", "you");
+  addNode("load", "tool", "Load a song", "Pick a song file to work on.", "you");
+  addNode("split", "tool", "Split into stems", "Vocals, drums, bass and everything else, as separate tracks.", "you");
+  addNode("listen", "tool", "Listen to each stem", "Play the stems on their own or together.", "you");
+  addNode("save", "tool", "Save the stems", "Keep each stem as its own file.", "you");
+  S.edges.push(["load", "split", "The song"], ["split", "listen", "Four stems"], ["split", "save", "Four stems"]);
+  S.chat.push({from:"ai", text:"Hi. Describe your tool as nodes, in your own words. You’ve already started with a few. Open “A stem separation tool” to see them."},
+              {from:"ai", text:"If you’re not sure how to turn something into a node, tell me and I’ll add it."},
+              {from:"ai", text:"Meanwhile I keep a finished version of the whole tool in the background, filling every gap myself. Switch to System to see it top to bottom. The more specific you get, the more of it becomes yours, and if you stop at any point you can take it away."});
+}
+
+/* ================= Code highlight ================= */
+const KW = new Set("const auto void for return struct class public bool float int if else true false".split(" "));
+function hlLine(line){
+  const re = /(\/\/.*)|("(?:[^"\\]|\\.)*")|([A-Za-z_]\w*)/g; let out = "", last = 0, m;
+  while ((m = re.exec(line))){
+    out += esc(line.slice(last, m.index));
+    if (m[1]) out += '<span class="cm">' + esc(m[1]) + "</span>";
+    else if (m[2]) out += '<span class="st">' + esc(m[2]) + "</span>";
+    else out += KW.has(m[3]) ? '<span class="kw">' + m[3] + "</span>" : esc(m[3]);
+    last = re.lastIndex;
+  }
+  return out + esc(line.slice(last));
+}
+function hl(code){
+  return code.trim().split("\n").map(l => {
+    const t = l.trim(); let c = "";
+    if (t.startsWith("//") && /AI decision|Filled in by AI/.test(t)) c = " dec";
+    else if (t.startsWith("//") && /\/\/ (Your |From your idea)/.test(t)) c = " mine";
+    return '<span class="ln' + c + '">' + (l ? hlLine(l) : " ") + "</span>";
+  }).join("");
+}
+
+/* ================= Decisions (phase 2) ================= */
+function decisions(){
+  const D = {
+    load:{text:"Reads WAV, MP3 and FLAC files.", why:"Covers almost every song people have. Reading these comes built into the plugin toolkit.",
+      alts:[{label:"WAV files only", text:"Reads WAV files only."},{label:"Any audio or video file", text:"Reads any audio or video file and pulls out the sound. Needs an extra library for video."}]},
+    listen:{text:"Solo and mute buttons for each stem, with a waveform.", why:"This is how most music tools let you check separate parts.",
+      alts:[{label:"Just play and stop per stem", text:"One play button per stem, nothing else."}]},
+    save:{text:"Saves each stem as a WAV file named after the song.", why:"WAV keeps full quality and every music tool can open it.",
+      alts:[{label:"Let people choose WAV or MP3", text:"People choose WAV or MP3 when saving."}]}
+  };
+  if (has("plugin")) D.plugin = {text:"Built with JUCE, a toolkit that makes every plugin format from one project.", why:"Saves building each format separately.",
+      alts:[{label:"Build each format on its own", text:"Each plugin format is built separately."}]};
+  if (has("standalone")) D.standalone = {text:"The app shares all its code with the plugin.", why:"One project to maintain, two ways to use it.", alts:[]};
+  return D;
+}
+
+/* ================= Build & overrides ================= */
+function applyBuild(){
+  S.phase = 2;
+  const D = decisions();
+  Object.keys(D).forEach(k => { S.nodes[k].decision = Object.assign({state:"open"}, D[k]); });
+  addNode("s-up", "split", "Send the song to a separation service", "An existing AI model, run online.", "ai", {decision:{state:"open",
+    text:"Uses an online separation service (an API) with an existing AI model.",
+    why:"Fastest to build, with good results. Trade-offs: it costs money per song, needs internet, and the song leaves the user’s computer.",
+    alts:[{label:"Run it on the user’s computer instead", act:"local"}]}});
+  addNode("s-back", "split", "Get four stems back", "Vocals, drums, bass, other.", "ai");
+  S.edges.push(["s-up", "s-back", "Waits for the result"]);
+  linkSplitTail("s-back");
+}
+function linkSplitTail(from){
+  if (has("bleed")) S.edges.push([from, "bleed", "Stems to clean"]);
+  if (has("backing")) S.edges.push([has("bleed") ? "bleed" : from, "backing", "Vocal stem"]);
+}
+function goLocal(){
+  removeNode("s-up"); removeNode("s-back");
+  S.edges = S.edges.filter(e => !(e[1] === "backing" && e[0] === "bleed"));
+  addNode("s-model", "split", "Include the separation model", "The AI model ships with the tool. It is about 300 MB.", "you",
+    {flag:{text:"Should the model be inside the installer, or download the first time someone uses the tool?",
+      options:[{label:"Inside the installer (bigger download)", act:"model-installer"},{label:"Download on first use (needs internet once)", act:"model-download"}]}});
+  addNode("s-lib", "split", "Model runtime library", "A ready-made library that runs AI models on a computer. One node stands for the whole library.", "ai", {kind:"lib"});
+  addNode("s-gpu", "split", "Use the graphics card if there is one", "Much faster. Falls back to the processor.", "you");
+  addNode("s-run", "split", "Work through the song in 10-second pieces", "Shows progress as it goes and keeps memory use low.", "you");
+  addNode("s-back2", "split", "Get four stems back", "Vocals, drums, bass, other.", "you");
+  addNode("l1", "s-lib", "Load a model file", "From the library’s documentation.", "doc", {kind:"libpart"});
+  addNode("l2", "s-lib", "Run the model on some audio", "From the library’s documentation.", "doc", {kind:"libpart"});
+  addNode("l3", "s-lib", "Choose processor or graphics card", "From the library’s documentation.", "doc", {kind:"libpart"});
+  S.edges.push(["s-model","s-lib","Model file"],["s-gpu","s-lib","Where to run"],["s-lib","s-run","Runs the model"],["s-run","s-back2","Stems"],["l1","l2","Loaded model"],["l3","l2","Device"]);
+  linkSplitTail("s-back2");
+  S.sep = "local";
+}
+function goCustom(text){
+  removeNode("s-up"); removeNode("s-back");
+  S.edges = S.edges.filter(e => !(e[1] === "backing" && e[0] === "bleed"));
+  addNode("s-custom", "split", text.length > 48 ? text.slice(0, 46) + "…" : text, "Your own way of splitting. Open it and describe the steps.", "you");
+  linkSplitTail("s-custom");
+  S.sep = "custom"; S.sepText = text;
+}
+
+/* ================= System (AI's finished tool, always complete) ================= */
+function buildSystem(){
+  const T = {}, E = [];
+  const N = (id, parent, title, src, from, note, code) => { T[id] = {id, parent, title, src, from:from || null, note:note || "", code:code ? code.trim() : null}; };
+  const dec = id => S.nodes[id] && S.nodes[id].decision;
+  const dsrc = id => dec(id) && dec(id).state === "mine" ? "change" : "ai";
+  const dtext = id => dec(id) ? dec(id).text : ((decisions()[id] || {}).text || "");
+  const dline = id => (dsrc(id) === "change" ? "// Your way: " : "// AI decision: ") + dtext(id);
+  const idea = t => '// From your idea: "' + t + '"';
+  const plugin = has("plugin"), app = has("standalone");
+  const fm = {vst:"VST3", au:"AU", both:"VST3 AU"}[S.formats];
+  N("sys", null, "Stem splitter", "ai");
+
+  /* How it runs */
+  if (plugin){
+    N("shell", "sys", "Plugin", "idea", "plugin", "Runs inside music software, on a track.");
+    N("sh-list", "shell", "Plugin registration", "idea", "p1", "Makes it show up in the plugin list.", `
+${idea("Shows up in the plugin list")}
+${fm ? "// Your choice: " + fm : "// AI decision: VST3, which works in most music software (your flag is still open)"}
+juce_add_plugin (StemSplitter
+    FORMATS ${fm || "VST3"}${app ? " Standalone" : ""}
+    PRODUCT_NAME "Stem Splitter")`);
+    N("sh-proc", "shell", "Audio processor", "idea", "p2", "Captures the track it sits on.", `
+${idea("Takes audio from its track")}
+void processBlock (AudioBuffer<float>& track, MidiBuffer&) override
+{
+    recorder.capture (track);          // keeps the track audio for splitting
+    player.render (track, stems);      // plays stems back once they exist
+}`);
+    N("sh-out", "shell", "Stem outputs", "idea", "p3", "Four outputs the music software can route to tracks.", `
+${idea("Sends each stem to its own track")}
+BusesProperties buses()
+{
+    return BusesProperties()
+        .withInput  ("Track",  stereo())
+        .withOutput ("Vocals", stereo()).withOutput ("Drums", stereo())
+        .withOutput ("Bass",   stereo()).withOutput ("Other", stereo());
+}`);
+    E.push(["sh-list", "sh-proc", ""], ["sh-proc", "sh-out", "Four stems"]);
+    if (app){
+      N("sh-app", "shell", "Standalone window", "idea", "standalone", "The same engine in its own window.", `
+${idea("Also works as a standalone app")}
+// Same engine as the plugin, in its own window
+START_JUCE_APPLICATION (StemSplitterApp)`);
+      E.push(["sh-app", "sh-proc", "Same engine"]);
+    }
+  } else {
+    N("shell", "sys", "Desktop app", "ai", null, "You haven’t said where it runs, so the AI made a desktop app for Windows and Mac.");
+    N("sh-win", "shell", "Main window", "ai", null, "", `
+// Filled in by AI: you have not said where it runs yet
+class MainWindow : public DocumentWindow
+{
+public:
+    MainWindow() : DocumentWindow ("Stem Splitter", background(), allButtons)
+    {
+        setContentOwned (new MainView(), true);
+        centreWithSize (960, 600);
+    }
+};`);
+    N("sh-open", "shell", "Open a song", "ai", null, "", `
+// Filled in by AI: the usual way to pick a file
+void chooseSong()
+{
+    chooser.launchAsync (FileBrowserComponent::openMode,
+        [this] (const FileChooser& fc) { loadSong (fc.getResult()); });
+}`);
+    N("sh-menu", "shell", "Menus and shortcuts", "ai", null, "", `
+// Filled in by AI: standard menus and shortcuts
+PopupMenu getMenuForIndex (int, const String& name) override
+{
+    PopupMenu m;
+    if (name == "File") m.addCommandItem (&commands, openSong);
+    return m;
+}`);
+    E.push(["sh-win", "sh-open", ""], ["sh-win", "sh-menu", ""]);
+  }
+
+  /* Audio input */
+  N("input", "sys", "Audio input", "idea", "load", "Getting the song ready to split.");
+  N("in-read", "input", "Read audio files", dsrc("load") === "change" ? "change" : "idea", "load", dtext("load"), `
+${idea("Load a song")}
+${dline("load")}
+AudioBuffer<float> readSong (const File& file)
+{
+    AudioFormatManager formats;
+    formats.registerBasicFormats();
+    auto reader = std::unique_ptr<AudioFormatReader> (formats.createReaderFor (file));
+    AudioBuffer<float> audio ((int) reader->numChannels, (int) reader->lengthInSamples);
+    reader->read (&audio, 0, audio.getNumSamples(), 0, true, true);
+    return audio;
+}`);
+  N("in-rate", "input", "Match sample rate", "ai", null, "", `
+// Filled in by AI: the separation model expects 44.1 kHz audio
+AudioBuffer<float> matchRate (const AudioBuffer<float>& in, double fromRate)
+{
+    return fromRate == 44100.0 ? in : resample (in, fromRate, 44100.0);
+}`);
+  E.push(["in-read", "in-rate", ""]);
+  if (has("batch")){
+    N("in-batch", "input", "Folder queue", "idea", "batch", "", `
+${idea("Split a whole folder at once")}
+void splitFolder (const File& folder)
+{
+    for (auto& song : folder.findChildFiles (File::findFiles, false, "*.wav;*.mp3;*.flac"))
+        queue.add (song);                  // one song at a time
+}`);
+    E.push(["in-batch", "in-read", "One file at a time"]);
+  }
+
+  /* Separation */
+  const sepNote = {api:"Uses an online service for now. That was the AI’s choice.", local:"Runs on the user’s computer. That was your change.", custom:"Your own method, with a stand-in until you describe it."}[S.sep];
+  N("sep", "sys", "Separation", "idea", "split", sepNote);
+  N("sp-stems", "sep", "The four stems", "idea", "split", "Vocals, drums, bass and everything else.", `
+${idea("Split into stems")}
+const StringArray stemNames { "Vocals", "Drums", "Bass", "Other" };`);
+  let tail;
+  if (S.sep === "api"){
+    const kept = dec("s-up") && dec("s-up").state === "kept";
+    N("sp-key", "sep", "Account key", "ai", null, "", `
+// Filled in by AI: the service needs an account key
+const String apiKey = settings.getSecure ("separation_api_key");`);
+    N("sp-up", "sep", "Upload the song", "ai", S.nodes["s-up"] ? "s-up" : null, kept ? "AI decision, kept by you." : "AI decision.", `
+// AI decision: use an online separation service${kept ? " (kept by you)" : ""}
+// The song leaves the computer here
+auto upload = api.upload (encodeWav (song), apiKey);`);
+    N("sp-job", "sep", "Start the job and wait", "ai", null, "", `
+// Filled in by AI: start the job, then check every 2 seconds
+auto job = api.startSeparation (upload.id, stemNames);
+while (! api.status (job.id).done)
+    Thread::sleep (2000);`);
+    N("sp-svc", "sep", "Separation service", "ext", null, "Someone else’s service. We only see what it offers.", `
+// External API: we only see what it offers
+// POST /separate          audio, stems     returns a job id
+// GET  /jobs/{id}                          returns status
+// GET  /jobs/{id}/{stem}                   returns audio`);
+    N("sp-get", "sep", "Download the stems", "ai", S.nodes["s-back"] ? "s-back" : null, "", `
+// Filled in by AI: fetch the four stems
+Stems stems;
+for (auto& name : stemNames)
+    stems.add (name, decodeWav (api.download (job.id, name)));`);
+    E.push(["sp-key", "sp-up", ""], ["sp-up", "sp-job", ""], ["sp-stems", "sp-job", "Stem names"], ["sp-job", "sp-svc", "Request"], ["sp-job", "sp-get", "Done"]);
+    tail = "sp-get";
+  } else if (S.sep === "local"){
+    N("sp-model", "sep", "Model file", "change", "s-model", "About 300 MB.", `
+// Your change: "Include the separation model"
+File modelFile()
+{
+    return appDataFolder().getChildFile ("separator.onnx");   // about 300 MB
+}`);
+    N("sp-lib", "sep", "ONNX Runtime", "lib", "s-lib", "A ready-made library that runs AI models on a computer.", `
+// Library: ONNX Runtime, runs AI models on a computer
+// You decide to use it. You do not write its inside.
+Ort::Session session (env, modelPath (modelFile()), options);`);
+    N("sp-dev", "sep", "Processor or graphics card", "change", "s-gpu", "", `
+// Your change: "Use the graphics card if there is one"
+if (hasGraphicsCard())
+    options.AppendExecutionProvider_CUDA (gpuOptions);   // otherwise the processor`);
+    N("sp-chunk", "sep", "10-second pieces", "change", "s-run", "", `
+// Your change: "Work through the song in 10-second pieces"
+for (size_t i = 0; i < pieces.size(); ++i)
+{
+    results.add (session.Run (runOptions, inNames, &pieces[i], 1, outNames, 4));
+    progress ((float) (i + 1) / pieces.size());
+}`);
+    N("sp-join", "sep", "Join the pieces", "ai", null, "", `
+// Filled in by AI: stitch pieces together with short crossfades
+Stems stems = joinWithCrossfade (results, 0.05);   // 50 ms overlap, no clicks`);
+    E.push(["sp-model", "sp-lib", "Model"], ["sp-dev", "sp-lib", "Device"], ["sp-stems", "sp-lib", "Stem names"], ["sp-lib", "sp-chunk", "Runs"], ["sp-chunk", "sp-join", "Pieces"]);
+    tail = "sp-join";
+  } else {
+    N("sp-stand", "sep", "Stand-in method", "ai", null, "Keeps the product working until you describe your method.", `
+// Filled in by AI: a stand-in so the product still works today
+// Uses the online service until your own method is described.
+Stems standIn (const AudioBuffer<float>& song) { return separateOnline (song); }`);
+    N("sp-custom", "sep", "Your method", "change", "s-custom", S.sepText, `
+// Your way: "${S.sepText.replace(/"/g, "'")}"
+// Waiting for your steps. Open the node in Ideas to describe them.
+Stems separate (const AudioBuffer<float>& song) { return standIn (song); }`);
+    E.push(["sp-stems", "sp-custom", "Stem names"], ["sp-stand", "sp-custom", "Until described"]);
+    tail = "sp-custom";
+  }
+  if (has("bleed")){
+    N("sp-bleed", "sep", "Reduce bleed", "idea", "bleed", "", `
+${idea("Reduce bleed between stems")}
+void reduceBleed (Stems& stems, float amount = 0.5f)
+{
+    for (auto& stem : stems)
+        stem.audio = spectralGate (stem.audio, everythingElse (stems, stem), amount);
+}`);
+    E.push([tail, "sp-bleed", "Raw stems"]); tail = "sp-bleed";
+  }
+  if (has("backing")){
+    N("sp-vocal", "sep", "Lead and backing vocals", "idea", "backing", "", `
+${idea("Separate lead and backing vocals")}
+VocalParts splitVocals (const AudioBuffer<float>& vocals)
+{
+    return vocalModel.run (vocals);   // a second pass on the vocal stem only
+}`);
+    E.push([tail, "sp-vocal", "Vocal stem"]);
+  }
+
+  /* Playback */
+  N("play", "sys", "Playback", "idea", "listen", "Listening to stems.");
+  N("pl-mix", "play", "Mix the stems", "idea", "listen", "", `
+${idea("Listen to each stem")}
+void render (AudioBuffer<float>& out)
+{
+    for (int i = 0; i < 4; ++i)
+        if (audible (i)) mixInto (out, stems[i], position);
+}`);
+  N("pl-ctrl", "play", "Stem controls", dsrc("listen"), "listen", dtext("listen"), `
+${dline("listen")}
+bool audible (int i) const
+{
+    bool anySolo = std::any_of (solo.begin(), solo.end(), [] (bool s) { return s; });
+    return ! mute[i] && (! anySolo || solo[i]);
+}`);
+  N("pl-wave", "play", "Waveforms", "ai", null, "", `
+// Filled in by AI: one waveform per stem
+void paint (Graphics& g) override
+{
+    for (int i = 0; i < 4; ++i)
+        thumbnails[i].drawChannels (g, rowBounds (i), 0.0, length, 1.0f);
+}`);
+  N("pl-trans", "play", "Play, pause and seek", "ai", null, "", `
+// Filled in by AI: play, pause and click-to-seek
+void mouseDown (const MouseEvent& e) override
+{
+    position = xToTime (e.x);
+}`);
+  E.push(["pl-trans", "pl-mix", "Position"], ["pl-ctrl", "pl-mix", "Which stems"], ["pl-mix", "pl-wave", "Playhead"]);
+
+  /* Export */
+  N("export", "sys", "Export", "idea", "save", "Saving stems as files.");
+  N("ex-write", "export", "Write stem files", dsrc("save") === "change" ? "change" : "idea", "save", dtext("save"), `
+${idea("Save the stems")}
+${dline("save")}
+void writeStem (const Stem& stem, const File& file)
+{
+    WavAudioFormat wav;
+    std::unique_ptr<AudioFormatWriter> w (wav.createWriterFor (new FileOutputStream (file), 44100.0, 2, 24, {}, 0));
+    w->writeFromAudioSampleBuffer (stem.audio, 0, stem.audio.getNumSamples());
+}`);
+  N("ex-name", "export", "Name the files", "ai", null, "", `
+// Filled in by AI: "Song name - Vocals.wav"
+File stemFile (const File& folder, const String& song, const String& stem)
+{
+    return folder.getChildFile (song + " - " + stem + ".wav");
+}`);
+  N("ex-where", "export", "Choose a folder", "ai", null, "", `
+// Filled in by AI: save next to the song unless you pick a folder
+File outputFolder (const File& song)
+{
+    return settings.lastFolder().exists() ? settings.lastFolder() : song.getParentDirectory();
+}`);
+  E.push(["ex-where", "ex-name", ""], ["ex-name", "ex-write", ""]);
+
+  /* Interface, settings, packaging: nobody described these yet */
+  N("ui", "sys", "Interface", "ai", null, "Nobody described the screens yet, so the AI designed them.");
+  N("ui-layout", "ui", "Layout", "ai", null, "", `
+// Filled in by AI: song at the top, four stem rows, buttons at the bottom
+void resized() override
+{
+    auto area = getLocalBounds();
+    header.setBounds (area.removeFromTop (56));
+    buttons.setBounds (area.removeFromBottom (64));
+    stemRows.setBounds (area);
+}`);
+  N("ui-prog", "ui", "Progress while splitting", "ai", null, "", `
+// Filled in by AI: splitting takes a while, so show progress
+ProgressBar progressBar { progress };   // 0.0 to 1.0, updated while splitting`);
+  N("ui-err", "ui", "Error messages", "ai", null, "", `
+// Filled in by AI: plain messages, never error codes
+void showError (const String& what, const String& fix)
+{
+    AlertWindow::showMessageBoxAsync (MessageBoxIconType::WarningIcon, what, fix);
+}`);
+  N("ui-theme", "ui", "Light and dark", "ai", null, "", `
+// Filled in by AI: follows the computer's light or dark setting
+setLookAndFeel (Desktop::isOSXDarkModeActive() ? &darkLook : &lightLook);`);
+  E.push(["ui-layout", "ui-prog", ""], ["ui-layout", "ui-err", ""], ["ui-layout", "ui-theme", ""]);
+  N("prefs", "sys", "Settings", "ai", null, "Small things the app remembers.");
+  N("pf-last", "prefs", "Remember last folder", "ai", null, "", `
+// Filled in by AI: remember the last folder used
+settings.setValue ("lastFolder", folder.getFullPathName());`);
+  N("pf-quality", "prefs", "Fast or best quality", "ai", null, "", `
+// Filled in by AI: "Fast" for previews, "Best" for final stems
+enum class Quality { Fast, Best };
+Quality quality = Quality::Best;`);
+  N("ship", "sys", "Packaging", "ai", null, "Getting it onto people’s computers.");
+  N("sh-inst", "ship", "Installers", "ai", null, "", `
+// Filled in by AI: installers for Windows and Mac, built on every release
+cmake --build build --config Release --target StemSplitter_All`);
+  N("sh-sign", "ship", "Code signing", "ai", null, "", `
+// Filled in by AI: signed so computers trust the installer
+codesign --deep --sign "Developer ID Application" StemSplitter.app`);
+  N("sh-upd", "ship", "Update check", "ai", null, "", `
+// Filled in by AI: check for a newer version once a day
+if (daysSince (settings.lastUpdateCheck()) >= 1)
+    updater.checkAsync();`);
+  E.push(["sh-inst", "sh-sign", ""], ["sh-inst", "sh-upd", ""]);
+  if (S.sep === "local"){
+    const inInstaller = S.model === "installer";
+    N("sh-model", "ship", "Getting the model onto computers", S.model ? "change" : "ai", "s-model", "", S.model ? `
+// Your choice: the model ${inInstaller ? "ships inside the installer" : "downloads on first use"}
+${inInstaller ? 'bundleResource ("separator.onnx");' : "if (! modelFile().existsAsFile())\n    downloadModel (modelFile(), progress);"}` : `
+// AI decision: download the model on first use (your flag is still open)
+if (! modelFile().existsAsFile())
+    downloadModel (modelFile(), progress);`);
+    E.push(["sh-model", "sh-inst", "Included"]);
+  }
+
+  /* Anything else the person added */
+  const extra = Object.values(S.nodes).filter(n => n.id.startsWith("u"));
+  if (extra.length){
+    N("extra", "sys", "Your extra features", "idea", null, "Features you added yourself.");
+    extra.forEach(n => {
+      const fn = n.title.replace(/[^A-Za-z0-9 ]/g, "").split(" ").filter(Boolean).map((w, i) => i ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase()).join("") || "feature";
+      N("x-" + n.id, "extra", n.title, "idea", n.id, n.desc, `
+${idea(n.title)}
+// Demo stand-in: the full tool builds this from your description
+// and flags anything it would otherwise have to guess.
+void ${fn}();`);
+    });
+    E.push(["extra", "ui", "Shows in"]);
+  }
+
+  /* Top level */
+  E.push(["shell", "ui", "Shows"], ["ui", "input", "Song chosen"], ["input", "sep", "Audio"], ["sep", "play", "Stems"], ["sep", "export", "Stems"],
+         ["prefs", "ui", "Saved choices"], ["shell", "ship", "Packaged as"]);
+  if (plugin) E.push(["shell", "input", "Track audio"]);
+  return {T, E};
+}
+const sysKids = (T, id) => Object.values(T).filter(n => n.parent === id).map(n => n.id);
+function sysLeaves(T, id){
+  const k = sysKids(T, id);
+  return k.length ? k.flatMap(c => sysLeaves(T, c)) : [id];
+}
+const mineSrc = s => s === "idea" || s === "change";
+function sysArea(T, id){ let c = id; while (T[c] && T[c].parent && T[c].parent !== "sys") c = T[c].parent; return c; }
+function trackSystem(){
+  const G = buildSystem(), T = G.T;
+  const sig = {}, titles = {}, areas = {};
+  Object.values(T).forEach(n => { sig[n.id] = n.src + "|" + n.title + "|" + n.note + "|" + (n.code || ""); titles[n.id] = n.title; areas[n.id] = sysArea(T, n.id); });
+  if (!S.sysSig){
+    S.sysSig = sig; S.sysTitles = titles; S.sysAreas = areas; S.sysVersion = 1; S.sysChanged = new Set();
+    S.changelog = [{v:1, text:"The AI finished a first full version from your four ideas, filling every gap itself."}];
+    return G;
+  }
+  const added = Object.keys(sig).filter(id => !(id in S.sysSig));
+  const removed = Object.keys(S.sysSig).filter(id => !(id in sig));
+  const changed = Object.keys(sig).filter(id => id in S.sysSig && S.sysSig[id] !== sig[id]);
+  if (added.length || removed.length || changed.length){
+    const parts = [], push = s => { if (!parts.includes(s)) parts.push(s); };
+    added.forEach(id => { const a = areas[id]; if (a === id) push("added " + titles[id]); else if (!added.includes(a)) push("updated " + titles[a]); });
+    removed.forEach(id => { const a = S.sysAreas[id]; if (a === id) push("removed " + S.sysTitles[id]); else if (!removed.includes(a) && titles[a]) push("updated " + titles[a]); });
+    changed.forEach(id => {
+      if (id === "sys") return;
+      const a = areas[id];
+      if (a === id && S.sysTitles[id] !== titles[id]) push("replaced " + S.sysTitles[id] + " with " + titles[id]);
+      else if (!(a === id && S.sysTitles[a] !== titles[a]) && !parts.includes("replaced " + S.sysTitles[a] + " with " + titles[a])) push("updated " + titles[a]);
+    });
+    const rp = parts.filter(x => x.startsWith("replaced "));
+    for (let i = parts.length - 1; i >= 0; i--) if (rp.some(r => r.endsWith(" with " + parts[i].replace(/^updated /, ""))) && parts[i].startsWith("updated ")) parts.splice(i, 1);
+    S.sysVersion++;
+    const text = parts.length ? parts.join(", ").replace(/^./, c => c.toUpperCase()) + "." : "Small updates.";
+    S.changelog.push({v:S.sysVersion, text});
+    S.chat.push({from:"sys", text:"System version " + S.sysVersion + " (in the background): " + text});
+    const mark = new Set();
+    [...added, ...changed].forEach(id => { let c = id; while (c && c !== "sys"){ mark.add(c); c = T[c] && T[c].parent; } });
+    S.sysChanged = mark; S.sysAdded = new Set(added);
+  }
+  S.sysSig = sig; S.sysTitles = titles; S.sysAreas = areas;
+  return G;
+}
+const SRC_TAG = {idea:"From your idea", change:"Your change", ai:"Filled in by AI", lib:"Library", ext:"External API"};
+const SRC_CLS = {idea:"s-you", change:"s-you", ai:"s-ai", lib:"slib", ext:"ext"};
+function sysItem(T, id){
+  const n = T[id], k = sysKids(T, id);
+  let desc = n.note;
+  if (k.length){ const L = sysLeaves(T, id); desc = L.filter(l => mineSrc(T[l].src)).length + " of " + L.length + " parts from you"; }
+  const upd = S.sysChanged && S.sysChanged.has(id) ? (S.sysAdded && S.sysAdded.has(id) ? "New" : "Updated") : "";
+  return {id, title:n.title, desc, tag:SRC_TAG[n.src], cls:"sys " + SRC_CLS[n.src] + (k.length ? " stack" : ""), dec:upd};
+}
+function snapshot(T){
+  const L = [];
+  const leaves = sysLeaves(T, "sys"), mine = leaves.filter(l => mineSrc(T[l].src)).length;
+  L.push("# Stem splitter: project snapshot", "", "System version " + S.sysVersion + ". " + mine + " of " + leaves.length + " parts come from your ideas; the AI filled in the rest.", "",
+    "Note: this demo's code is a readable sketch. The full tool would compile, test and package it.", "", "## Your ideas", "");
+  (function out(id, depth){ kids(id).forEach(k => { const n = S.nodes[k]; L.push("  ".repeat(depth) + "- " + n.title + (n.desc ? ": " + n.desc : "") + (n.decision ? " [" + (n.decision.state === "mine" ? "your way" : "AI decision") + ": " + n.decision.text + "]" : "")); out(k, depth + 1); }); })("root", 0);
+  L.push("", "## System", "");
+  (function out(id, path){
+    sysKids(T, id).forEach(k => {
+      const n = T[k], p = path.concat(n.title);
+      if (n.code){ L.push("### " + p.join(" / "), "", "_" + SRC_TAG[n.src] + "_", "", "```cpp", n.code, "```", ""); }
+      else { L.push("### " + p.join(" / ") + " (" + SRC_TAG[n.src] + ")", n.note, ""); out(k, p); }
+    });
+  })("sys", []);
+  return L.join("\n");
+}
+
+/* ================= Layout ================= */
+function rankIds(ids, edges){
+  const r = {}; ids.forEach(i => r[i] = 0);
+  const local = edges.filter(e => ids.includes(e[0]) && ids.includes(e[1]));
+  for (let k = 0; k < ids.length; k++) local.forEach(([a, b]) => { if (r[b] < r[a] + 1) r[b] = r[a] + 1; });
+  const R = []; ids.forEach(i => (R[r[i]] = R[r[i]] || []).push(i));
+  return {ranks:R.filter(Boolean), local};
+}
+function layout(ranks, availW){
+  const R = ranks.length, maxN = Math.max(...ranks.map(r => r.length)), horiz = availW >= 620, pos = {}; let W, H;
+  if (horiz){
+    const nw = 174, nh = 108, pad = 40, vgap = 40;
+    const rg = Math.max(200, Math.min(290, (availW - 2*pad - nw) / Math.max(1, R - 1)));
+    const colH = maxN*nh + (maxN - 1)*vgap; H = colH + 2*pad; W = 2*pad + (R - 1)*rg + nw;
+    ranks.forEach((rank, ri) => { const h = rank.length*nh + (rank.length - 1)*vgap, y0 = pad + (colH - h)/2;
+      rank.forEach((id, i) => pos[id] = {x:pad + ri*rg, y:y0 + i*(nh + vgap), w:nw, h:nh, r:ri}); });
+  } else {
+    const pad = 16, hgap = 12, nh = 104, rg = 150;
+    const nw = Math.min(176, Math.floor((availW - 2*pad - (maxN - 1)*hgap) / maxN));
+    W = Math.max(availW, 2*pad + maxN*nw + (maxN - 1)*hgap); H = 2*pad + 44 + (R - 1)*rg + nh + 60;
+    ranks.forEach((rank, ri) => { const w = rank.length*nw + (rank.length - 1)*hgap, x0 = (W - w)/2;
+      rank.forEach((id, i) => pos[id] = {x:x0 + i*(nw + hgap), y:pad + 44 + ri*rg, w:nw, h:nh, r:ri}); });
+  }
+  return {pos, W, H, horiz};
+}
+function edgePath(a, b, horiz){
+  let s, e, c1, c2;
+  if (horiz){
+    if (a.r !== b.r){ s = [a.x + a.w, a.y + a.h/2]; e = [b.x, b.y + b.h/2]; const d = Math.max(40, (e[0] - s[0])/2); c1 = [s[0] + d, s[1]]; c2 = [e[0] - d, e[1]]; }
+    else if (a.y < b.y){ s = [a.x + a.w/2, a.y + a.h]; e = [b.x + b.w/2, b.y]; c1 = [s[0], s[1] + 16]; c2 = [e[0], e[1] - 16]; }
+    else { s = [a.x + a.w/2, a.y]; e = [b.x + b.w/2, b.y + b.h]; c1 = [s[0], s[1] - 16]; c2 = [e[0], e[1] + 16]; }
+  } else {
+    if (a.r !== b.r){ s = [a.x + a.w/2, a.y + a.h]; e = [b.x + b.w/2, b.y]; const d = Math.max(30, (e[1] - s[1])/2); c1 = [s[0], s[1] + d]; c2 = [e[0], e[1] - d]; }
+    else if (a.x < b.x){ s = [a.x + a.w, a.y + a.h/2]; e = [b.x, b.y + b.h/2]; c1 = [s[0] + 8, s[1]]; c2 = [e[0] - 8, e[1]]; }
+    else { s = [a.x, a.y + a.h/2]; e = [b.x + b.w, b.y + b.h/2]; c1 = [s[0] - 8, s[1]]; c2 = [e[0] + 8, e[1]]; }
+  }
+  const t = .5, mt = 1 - t;
+  const mx = mt*mt*mt*s[0] + 3*mt*mt*t*c1[0] + 3*mt*t*t*c2[0] + t*t*t*e[0];
+  const my = mt*mt*mt*s[1] + 3*mt*mt*t*c1[1] + 3*mt*t*t*c2[1] + t*t*t*e[1];
+  return {d:"M" + s + " C" + c1 + " " + c2 + " " + e, s, m:[mx, my]};
+}
+
+/* ================= Render ================= */
+function drawGraph(items, edges, sel, opts){
+  const canvas = $("#canvas");
+  const ids = items.map(i => i.id);
+  const {ranks, local} = rankIds(ids, edges);
+  const L = layout(ranks, canvas.clientWidth);
+  let svg = '<svg class="edges" width="' + L.W + '" height="' + L.H + '" aria-hidden="true"><defs>' +
+    '<marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--edge)"/></marker>' +
+    '<marker id="arh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--hi)"/></marker></defs>';
+  local.forEach(([a, b, label]) => {
+    const p = edgePath(L.pos[a], L.pos[b], L.horiz);
+    const on = sel && (a === sel || b === sel), dim = sel && !on ? " dim" : "";
+    svg += '<path class="' + (on ? "hi" : "") + dim + '" d="' + p.d + '" marker-end="url(#' + (on ? "arh" : "ar") + ')"/>';
+    svg += '<circle class="' + dim.trim() + '" cx="' + p.s[0] + '" cy="' + p.s[1] + '" r="3.6"/>';
+    if (label && L.horiz && S.lens === "ideas") svg += '<text class="' + dim.trim() + '" x="' + p.m[0] + '" y="' + (p.m[1] - 7) + '" text-anchor="middle">' + esc(label) + "</text>";
+  });
+  svg += "</svg>";
+  let html = "";
+  items.forEach(it => {
+    const p = L.pos[it.id];
+    const isNew = S.seen && !S.seen.has(it.id);
+    html += '<button class="node ' + it.cls + (p.w < 140 ? " compact" : "") + (sel === it.id ? " sel" : "") + (isNew ? " appear" : "") +
+      '" data-node="' + it.id + '" aria-label="' + esc(it.title + ", " + it.tag) + '" style="left:' + p.x + "px;top:" + p.y + "px;width:" + p.w + "px;height:" + p.h + 'px">' +
+      '<span class="hd"><span>' + esc(it.tag) + "</span>" + (it.dec ? '<span class="dec">' + it.dec + "</span>" : "") + "</span>" +
+      '<span class="bd"><span class="tt">' + esc(it.title) + '</span><span class="sm">' + esc(it.desc || "") + "</span></span>" +
+      (it.flag ? '<span class="badge" aria-hidden="true">!</span>' : "") + "</button>";
+  });
+  canvas.innerHTML = '<div class="stage" style="width:' + L.W + "px;height:" + L.H + 'px">' + svg + html + "</div>";
+  const se = sel && canvas.querySelector('.node[data-node="' + sel + '"]');
+  if (se){
+    const cr = canvas.getBoundingClientRect(), er = se.getBoundingClientRect();
+    const bottom = cr.bottom - (parseFloat(getComputedStyle(canvas).paddingBottom) || 0);
+    if (er.left < cr.left) canvas.scrollLeft -= cr.left - er.left + 24;
+    else if (er.right > cr.right) canvas.scrollLeft += er.right - cr.right + 24;
+    if (er.top < cr.top + 44) canvas.scrollTop -= cr.top + 44 - er.top;
+    else if (er.bottom > bottom) canvas.scrollTop += er.bottom - bottom + 24;
+  }
+}
+function ideaItem(id){
+  const n = S.nodes[id];
+  const tag = n.kind === "lib" ? "Library" : n.kind === "libpart" ? "From the docs" : n.by === "you" ? "You" : "AI";
+  let cls = n.kind === "lib" ? "lib" : n.kind === "libpart" ? "libpart" : "by-" + n.by;
+  if (kids(id).length) cls += " stack";
+  let dec = "";
+  if (n.decision) dec = n.decision.state === "mine" ? "Your way" : n.decision.state === "kept" ? "Kept" : "AI decision";
+  return {id, title:n.title, desc:n.desc, tag, cls, flag:!!n.flag, dec};
+}
+function render(anim){
+  const main = $("#main"); main.dataset.tab = S.tab;
+  if (S.path.some(p => !has(p))) S.path = [];
+  if (S.sel && S.lens === "ideas" && !has(S.sel)) S.sel = null;
+  const SYS = trackSystem();
+  if (S.sysPath.some(p => !SYS.T[p])) S.sysPath = [];
+  if (S.sysSel && !SYS.T[S.sysSel]) S.sysSel = null;
+  renderHeader(SYS.T);
+  const canvas = $("#canvas");
+  const willSheet = S.sheetMode ? true : S.lens === "ideas" ? !!(S.adding || S.sel) : !!S.sysSel;
+  document.querySelector(".stagewrap").classList.toggle("sheet-open", willSheet);
+  const note = $("#lensnote"), addb = $("#addbtn"), hint = $("#hint"), logb = $("#logbtn");
+  logb.hidden = S.lens !== "system";
+  if (S.lens === "ideas"){
+    const ids = kids(cur());
+    addb.hidden = cur() === "root";
+    note.innerHTML = cur() === "root" ? "Your idea, in your words" : "Inside <b>" + esc(titleOf(cur())) + "</b>";
+    if (!ids.length){
+      canvas.innerHTML = '<div class="empty"><h3>Nothing inside yet</h3><p>Add nodes to describe how “' + esc(titleOf(cur())) + '” should work, in your own words. Or ask the assistant to help.</p><button class="btn you" data-act="add">+ Add node</button></div>';
+    } else drawGraph(ids.map(ideaItem), S.edges, S.sel);
+    hint.hidden = !!S.sel || S.adding || !ids.length || !!S.sheetMode;
+    S.seen = new Set([...(S.seen || []), ...ids]);
+  } else {
+    addb.hidden = true;
+    const T = SYS.T, c = S.sysPath.length ? S.sysPath[S.sysPath.length - 1] : "sys";
+    const L = sysLeaves(T, "sys"), mine = L.filter(l => mineSrc(T[l].src)).length;
+    note.innerHTML = "<b>Finished, version " + S.sysVersion + ".</b> " + mine + " of " + L.length + " parts from you";
+    const ids = sysKids(T, c);
+    drawGraph(ids.map(id => sysItem(T, id)), SYS.E, S.sysSel);
+    hint.hidden = !!S.sysSel || !!S.sheetMode;
+    S.seen = new Set([...(S.seen || []), ...ids]);
+  }
+  renderSheet(SYS.T);
+  renderChat();
+  if (anim){
+    const r = canvas.getBoundingClientRect();
+    canvas.style.transformOrigin = (anim.x != null ? anim.x - r.left : r.width/2) + "px " + (anim.y != null ? anim.y - r.top : r.height/2) + "px";
+    canvas.classList.remove("anim-in", "anim-out"); void canvas.offsetWidth;
+    canvas.classList.add(anim.dir === "out" ? "anim-out" : "anim-in");
+  }
+}
+function renderHeader(T){
+  $("#steps").innerHTML = '<span class="step' + (S.phase === 1 ? " on" : "") + '">1 <span class="lg">Describe what it does</span><span class="sh">Describe</span></span><span class="arrow">→</span>' +
+    (S.phase === 1 ? '<button class="step" data-act="build">2 Build starter project</button>' : '<span class="step on">2 <span class="lg">Starter project</span><span class="sh">Starter</span></span>');
+  const ideas = S.lens === "ideas";
+  const crumbs = ideas ? ["root", ...S.path] : ["sys", ...S.sysPath];
+  const tt = id => ideas ? titleOf(id) : (id === "sys" ? "System: Stem splitter" : T[id].title);
+  $("#crumbs").innerHTML = crumbs.map((id, i) => i === crumbs.length - 1
+    ? '<li><span aria-current="page">' + esc(tt(id)) + "</span></li>"
+    : '<li><button data-act="crumb" data-i="' + i + '">' + esc(tt(id)) + "</button></li>").join("");
+  const ol = $("#crumbs"); ol.scrollLeft = ol.scrollWidth;
+  $("#up").disabled = ideas ? !S.path.length : !S.sysPath.length;
+  document.querySelectorAll('[data-act="lens"]').forEach(b => b.setAttribute("aria-pressed", String(b.dataset.l === S.lens)));
+  document.querySelectorAll('[data-act="tab"]').forEach(b => b.setAttribute("aria-pressed", String(b.dataset.t === S.tab)));
+}
+function connList(id){
+  const out = [];
+  S.edges.forEach(([a, b, l]) => {
+    if (a === id && has(b)) out.push("<li>Leads to <b>" + esc(S.nodes[b].title) + "</b>" + (l ? " · " + esc(l) : "") + "</li>");
+    if (b === id && has(a)) out.push("<li>Comes from <b>" + esc(S.nodes[a].title) + "</b>" + (l ? " · " + esc(l) : "") + "</li>");
+  });
+  return out.length ? '<div class="sec">Connections</div><ul class="conn">' + out.join("") + "</ul>" : "";
+}
+function renderSheet(T){
+  const sh = $("#sheet");
+  let h = "";
+  if (S.sheetMode === "take"){
+    const L = sysLeaves(T, "sys"), mine = L.filter(l => mineSrc(T[l].src)).length;
+    const runs = has("plugin") ? "A plugin (" + ({vst:"VST3", au:"AU", both:"VST3 and AU"}[S.formats] || "VST3, the AI’s pick") + ")" + (has("standalone") ? " and a standalone app" : "") : "A desktop app for Windows and Mac";
+    const aiAreas = {};
+    L.filter(l => T[l].src === "ai").forEach(l => { const a = sysArea(T, l); (aiAreas[a] = aiAreas[a] || []).push(T[l].title); });
+    h = '<div class="shead"><div><span class="chip" style="--tc:var(--you)">Finished product</span><h3>Take it away</h3></div><button class="close" data-act="closemode" aria-label="Close">×</button></div>' +
+      '<p class="muted">If you stop here, this is what you leave with. The AI filled every gap, so it works as it is. Anything you describe later replaces its choices.</p>' +
+      '<div class="stats"><div><span>Runs as</span>' + esc(runs) + '</div><div><span>Parts</span>' + mine + " of " + L.length + ' from your ideas</div><div><span>Version</span>' + S.sysVersion + "</div></div>" +
+      '<div class="sec">You’d get</div><ul class="conn"><li><b>Installers</b> for Windows and Mac</li><li><b>The source code</b>, ' + L.length + ' parts, each linked to the idea it came from</li><li><b>A plain-language spec</b> of your ideas and every choice the AI made</li></ul>' +
+      '<div class="sec">Filled in by the AI, because you haven’t described these yet</div><ul class="conn">' +
+      Object.keys(aiAreas).map(a => "<li><b>" + esc(T[a].title) + "</b>: " + esc(aiAreas[a].join(", ")) + "</li>").join("") + "</ul>" +
+      (DL ? '<button class="btn you full" data-act="download">Download project snapshot</button>' : "") +
+      (S.dlStatus ? '<p class="muted" style="margin-top:6px">' + esc(S.dlStatus) + "</p>" : "") +
+      '<p class="muted" style="font-size:13px;margin-top:10px">In this demo the code is a readable sketch. The full tool would compile, test and package it.</p>';
+  } else if (S.sheetMode === "log"){
+    h = '<div class="shead"><div><span class="chip" style="--tc:var(--ai)">Evolution</span><h3>How the system changed</h3></div><button class="close" data-act="closemode" aria-label="Close">×</button></div>' +
+      '<p class="muted">The AI keeps the whole tool finished. Each time your ideas get more specific, it rebuilds the parts they touch.</p><ul class="log">' +
+      S.changelog.slice().reverse().map(c => "<li><b>Version " + c.v + "</b>" + esc(c.text) + "</li>").join("") + "</ul>";
+  } else if (S.lens === "ideas" && S.adding){
+    const sibs = kids(cur());
+    h = '<div class="shead"><div><span class="chip" style="--tc:var(--you)">You</span><h3>Add a node inside “' + esc(titleOf(cur())) + '”</h3></div><button class="close" data-act="closeadd" aria-label="Close">×</button></div>' +
+      '<label class="f" for="nn">What is it?</label><input type="text" id="nn" value="' + esc(S.addPrefill || "") + '" placeholder="For example: Change the speed without changing the pitch">' +
+      '<label class="f" for="nd">Describe it in your own words (optional)</label><textarea id="nd" rows="2"></textarea>' +
+      (sibs.length ? '<label class="f" for="na">Comes after</label><select id="na"><option value="">Nothing, it stands alone</option>' + sibs.map(s => '<option value="' + s + '">' + esc(S.nodes[s].title) + "</option>").join("") + "</select>" : "") +
+      '<button class="btn you full" data-act="addsave">Add node</button>';
+  } else if (S.lens === "ideas" && S.sel && has(S.sel)){
+    const n = S.nodes[S.sel], id = S.sel;
+    const tc = n.kind === "lib" ? "var(--lib)" : n.kind === "libpart" ? "var(--doc)" : n.by === "you" ? "var(--you)" : "var(--ai)";
+    const tag = n.kind === "lib" ? "Library node" : n.kind === "libpart" ? "From the library’s documentation" : n.by === "you" ? "Your node" : "Added by the AI";
+    h = '<div class="shead"><div><span class="chip" style="--tc:' + tc + '">' + tag + "</span><h3>" + esc(n.title) + '</h3></div><button class="close" data-act="deselect" aria-label="Close">×</button></div>';
+    h += '<p class="muted">' + esc(n.desc) + "</p>";
+    if (n.kind === "lib") h += '<p class="muted">You don’t design the inside of a library. You decide whether to use it and how. Open it to see what it offers, taken from its documentation.</p>';
+    if (n.flag){
+      h += '<div class="flagbox"><strong>Needs your decision</strong><p>' + esc(n.flag.text) + '</p><div class="opts">' +
+        n.flag.options.map((o, i) => '<button class="btn alt" data-act="flag" data-id="' + id + '" data-i="' + i + '">' + esc(o.label) + "</button>").join("") + "</div></div>";
+    }
+    if (n.decision){
+      const d = n.decision, mine = d.state === "mine";
+      h += '<div class="decbox' + (mine ? " mine" : "") + '"><strong>' + (mine ? "Your way" : d.state === "kept" ? "AI decision · kept" : "AI decision") + '</strong><div class="dt">' + esc(d.text) + "</div>" + (!mine ? '<p class="why">' + esc(d.why) + "</p>" : "");
+      if (S.changing === id){
+        h += '<div class="opts">' + d.alts.map((a, i) => '<button class="btn alt" data-act="alt" data-id="' + id + '" data-i="' + i + '">' + esc(a.label) + "</button>").join("") + "</div>" +
+          '<label class="f" for="own">Or describe your own way</label><textarea id="own" rows="2" placeholder="Say how you want it to work"></textarea>' +
+          '<div class="row" style="margin-top:8px"><button class="btn you" data-act="own" data-id="' + id + '">Use my way</button><button class="btn alt" data-act="cancelchange">Cancel</button></div>';
+      } else if (d.state === "open"){
+        h += '<div class="row"><button class="btn alt" data-act="keep" data-id="' + id + '">Keep it</button><button class="btn" data-act="change" data-id="' + id + '">Change it</button></div>';
+      } else {
+        h += '<div class="row"><button class="btn alt" data-act="change" data-id="' + id + '">Change it</button></div>';
+      }
+      h += "</div>";
+    }
+    h += connList(id);
+    const kc = kids(id).length;
+    h += '<button class="btn full" data-act="open" data-id="' + id + '">' + (kc ? "Open it (" + kc + " inside)" : "Open it and describe it in more detail") + "</button>";
+    if (n.kind === "lib") h += '<button class="btn alt full" data-act="seesys" data-from="' + id + '">See it in the System lens</button>';
+    if (id.startsWith("u")) h += '<button class="linkbtn" data-act="del" data-id="' + id + '">Delete this node</button>';
+  } else if (S.lens === "system" && S.sysSel && T[S.sysSel]){
+    const n = T[S.sysSel], from = n.from && S.nodes[n.from], k = sysKids(T, n.id);
+    const tc = {idea:"var(--you)", change:"var(--you)", ai:"var(--ai)", lib:"var(--lib)", ext:"var(--ext)"}[n.src];
+    h = '<div class="shead"><div><span class="chip" style="--tc:' + tc + '">' + esc(SRC_TAG[n.src]) + "</span><h3>" + esc(n.title) + '</h3></div><button class="close" data-act="sysdeselect" aria-label="Close">×</button></div>';
+    if (n.note) h += '<p class="muted">' + esc(n.note) + "</p>";
+    if (from) h += '<p class="muted">Built from your idea: <b>' + esc(from.title) + "</b></p>";
+    else if (n.src === "ai") h += '<p class="muted">You haven’t described this yet, so the AI chose it. Describe it in your own words to take it over.</p>';
+    if (k.length){
+      const L = sysLeaves(T, n.id);
+      h += '<p class="muted">' + L.filter(l => mineSrc(T[l].src)).length + " of " + L.length + " parts come from your ideas.</p>";
+      h += '<button class="btn full" data-act="sysopen" data-id="' + n.id + '">Open it (' + k.length + " inside)</button>";
+    } else if (n.code) h += '<pre class="code"><code>' + hl(n.code) + "</code></pre>";
+    if (from) h += '<button class="btn alt full" data-act="toidea" data-id="' + n.from + '">Show the idea it came from</button>';
+    else if (n.src === "ai") h += '<button class="btn alt full" data-act="describe" data-t="' + esc(n.title) + '">Describe this yourself</button>';
+  }
+  sh.hidden = !h; sh.innerHTML = h;
+}
+
+/* ================= Chat ================= */
+const SCRIPTS = [
+  {id:"plugin", prompt:"I want this to work as a plugin inside my music software", match:/plugin|daw|ableton|logic|fl studio|vst|music software/i,
+   avail:() => S.phase === 1 && !S.done.plugin,
+   async run(){
+     await say("Got it. I’ll add that as its own node, connected to where the audio comes from.");
+     addNode("plugin", "tool", "Works as a plugin", "Runs inside music software, on a track.", "ai",
+       {flag:{text:"Which music software? Plugin formats differ: VST3 works in most, and Logic Pro needs AU.",
+         options:[{label:"Ableton, FL Studio and others (VST3)", act:"fmt-vst"},{label:"Logic Pro (AU)", act:"fmt-au"},{label:"Both", act:"fmt-both"}]}});
+     S.edges.push(["plugin", "load", "Audio from the track"]);
+     go(["tool"], "plugin"); await wait(900);
+     addNode("p1", "plugin", "Shows up in the plugin list", "People add it to a track like any other effect.", "ai");
+     addNode("p2", "plugin", "Takes audio from its track", "No need to load a file.", "ai");
+     addNode("p3", "plugin", "Sends each stem to its own track", "So people can mix them right away.", "ai");
+     S.edges.push(["p1", "p2", ""], ["p2", "p3", "Four stems"]);
+     go(["tool", "plugin"], null, true);
+     await say("I opened it and sketched what “works as a plugin” means, in three nodes. Change or delete anything that isn’t right. One thing I won’t guess: which music software you use. It’s flagged on the node.");
+   }},
+  {id:"batch", prompt:"Can it split a whole folder of songs at once?", match:/folder|batch|many songs|multiple songs|at once/i,
+   avail:() => S.phase === 1 && !S.done.batch,
+   async run(){
+     await say("Yes. I’ve added it next to “Load a song”.");
+     const conflict = has("plugin");
+     addNode("batch", "tool", "Split a whole folder at once", "Pick a folder and every song in it gets split.", "ai",
+       conflict ? {flag:{text:"This clashes with the plugin: a plugin only sees the track it’s on, so it can’t open a folder. Should the tool also be a standalone app?",
+         options:[{label:"Yes, a plugin and a standalone app", act:"batch-app"},{label:"No, drop batch splitting", act:"batch-drop"}]}} : null);
+     S.edges.push(["batch", "split", "One song at a time"]);
+     go(["tool"], "batch");
+     if (conflict) await say("There’s a conflict with “Works as a plugin”, so I flagged it instead of choosing for you.");
+   }},
+  {id:"bleed", prompt:"I’m not sure how to describe cleaning up sounds leaking between stems", match:/bleed|leak|clean/i,
+   avail:() => S.phase === 1 && !S.done.bleed,
+   async run(){
+     await say("That’s called bleed: a bit of one instrument ending up in another stem, like faint drums in the vocals. It belongs inside “Split into stems”, so I’ll put it there.");
+     go(["tool"], "split"); await wait(700);
+     addNode("bleed", "split", "Reduce bleed between stems", "Lower what each stem picks up from the others.", "ai");
+     if (has("backing")) S.edges.push(["bleed", "backing", "Vocal stem"]);
+     go(["tool", "split"], "bleed", true);
+   }},
+  {id:"backing", prompt:"Also split the vocals into lead and backing", match:/backing|lead|harmon/i,
+   avail:() => S.phase === 1 && !S.done.backing,
+   async run(){
+     await say("Added inside “Split into stems”. It works on the vocal stem only.");
+     go(["tool"], "split"); await wait(700);
+     addNode("backing", "split", "Separate lead and backing vocals", "Two vocal stems instead of one.", "ai");
+     if (has("bleed")) S.edges.push(["bleed", "backing", "Vocal stem"]);
+     go(["tool", "split"], "backing", true);
+   }},
+  {id:"build", prompt:"Build my starter project", match:/build|starter|project|ready/i,
+   avail:() => S.phase === 1,
+   async run(){
+     await say("Bringing my background choices into your idea graph…", 1200);
+     applyBuild();
+     const n = Object.values(S.nodes).filter(x => x.decision).length;
+     go(["tool"], null, true);
+     await say("Done. Your ideas are unchanged. The finished tool in System already relied on these choices; now " + n + " of them are marked “AI decision” right on your nodes, so you can keep each one or change it, in as much detail as you like.");
+     await say("The biggest one is how songs get split. Open “Split into stems” to see it. Every change you make flows into the finished system.");
+     const fl = Object.values(S.nodes).filter(x => x.flag).length;
+     if (fl) await say(fl + " flag" + (fl > 1 ? "s are" : " is") + " still waiting on you. They’re the red badges.");
+   }},
+  {id:"why", prompt:"Why use an online service for splitting?", match:/why|online|service|api/i,
+   avail:() => S.phase === 2 && S.sep === "api",
+   async run(){
+     await say("It gets you working results fastest: a good separation model already exists as a service. The trade-offs are cost per song, needing internet, and songs leaving the user’s computer. If any of those matter, change it and describe what you want instead.");
+     go(["tool", "split"], "s-up");
+   }},
+  {id:"change", prompt:"I don’t want songs uploaded anywhere", match:/upload|offline|privacy|local|computer|don.t want/i,
+   avail:() => S.phase === 2 && S.sep === "api",
+   async run(){
+     await say("Then the model has to run on the user’s computer. I’ve opened the decision so you can switch it.");
+     S.changing = "s-up"; go(["tool", "split"], "s-up");
+   }},
+  {id:"lib", prompt:"What is the model runtime library?", match:/runtime|library|onnx/i,
+   avail:() => S.phase === 2 && S.sep === "local",
+   async run(){
+     await say("It’s a ready-made library that runs AI models on a normal computer. Rather than hiding it, I made the whole library one node. Open it to see what it offers, taken from its documentation, or switch to System to see the code that uses it.");
+     go(["tool", "split"], "s-lib");
+   }}
+];
+async function say(text, delay){
+  S.typing = true; renderChat();
+  await wait(delay || 650);
+  S.typing = false; S.chat.push({from:"ai", text}); renderChat();
+}
+function go(path, sel, anim){
+  S.lens = "ideas"; S.path = path; S.sel = sel; S.adding = false;
+  if (window.innerWidth <= 860) S.tab = "graph";
+  render(anim ? {dir:"in"} : null);
+}
+async function runScript(sc, typed){
+  if (S.busy) return;
+  S.busy = true;
+  S.chat.push({from:"you", text:typed || sc.prompt}); renderChat();
+  try { await sc.run(); } finally { S.done[sc.id] = true; S.busy = false; render(); }
+}
+async function handleTyped(text){
+  const sc = SCRIPTS.find(s => s.avail() && s.match.test(text));
+  if (sc) return runScript(sc, text);
+  if (S.busy) return;
+  S.chat.push({from:"you", text}); renderChat();
+  S.busy = true;
+  await say("This demo is scripted, so I can only act on the suggested messages. In the full tool I’d turn that into a node and put it where it fits. You can also add it yourself with “+ Add node”.");
+  S.busy = false; renderChat();
+}
+function renderChat(){
+  const m = $("#msgs");
+  m.innerHTML = S.chat.map(c => '<div class="msg ' + c.from + '">' + esc(c.text) + "</div>").join("") +
+    (S.typing ? '<div class="msg ai typing" aria-label="Assistant is typing"><i></i><i></i><i></i></div>' : "");
+  m.scrollTop = m.scrollHeight;
+  $("#chips").innerHTML = SCRIPTS.filter(s => s.avail()).map(s => '<button data-act="chip" data-s="' + s.id + '"' + (S.busy ? " disabled" : "") + ">" + esc(s.prompt) + "</button>").join("");
+}
+
+/* ================= Flag & decision effects ================= */
+async function applyFlag(id, i){
+  const n = S.nodes[id], o = n.flag.options[i];
+  delete n.flag;
+  if (o.act.startsWith("fmt-")){
+    S.formats = o.act.slice(4);
+    n.desc = "Runs inside music software, on a track. Format: " + {vst:"VST3", au:"AU", both:"VST3 and AU"}[S.formats] + ".";
+    render(); await say("Noted: " + o.label + ". The plugin wrapper in the System lens now builds that format.");
+  } else if (o.act === "batch-app"){
+    addNode("standalone", "tool", "Also works as a standalone app", "Its own window, outside music software.", "ai");
+    S.edges.push(["standalone", "batch", "Runs it"]);
+    if (S.phase === 2) S.nodes.standalone.decision = Object.assign({state:"open"}, decisions().standalone);
+    S.sel = "standalone"; render(); await say("Added “Also works as a standalone app”. Batch splitting runs there.");
+  } else if (o.act === "batch-drop"){
+    removeNode("batch"); S.sel = null; render(); await say("Removed batch splitting.");
+  } else if (o.act.startsWith("model-")){
+    S.model = o.act.slice(6);
+    n.desc = "The AI model ships with the tool, about 300 MB, " + (S.model === "installer" ? "inside the installer." : "downloaded on first use.");
+    render(); await say("Noted. The model file in the System lens follows your choice.");
+  }
+}
+
+/* ================= Events ================= */
+document.addEventListener("click", async e => {
+  const nodeEl = e.target.closest(".node");
+  if (nodeEl){
+    const id = nodeEl.dataset.node;
+    if (S.lens === "system"){
+      S.sheetMode = null;
+      const G = buildSystem();
+      if (S.sysSel === id && sysKids(G.T, id).length){ S.sysPath = [...S.sysPath, id]; S.sysSel = null; render({dir:"in", x:e.clientX, y:e.clientY}); }
+      else { S.sysSel = id; render(); }
+      return;
+    }
+    S.sheetMode = null;
+    if (S.sel === id){ S.path = [...S.path, id]; S.sel = null; S.adding = false; render({dir:"in", x:e.clientX, y:e.clientY}); }
+    else { S.sel = id; S.adding = false; S.changing = null; render(); }
+    return;
+  }
+  const t = e.target.closest("[data-act]");
+  if (!t){
+    if (e.target.closest("#canvas")){ if (S.lens === "ideas" && S.sel){ S.sel = null; render(); } else if (S.sysSel){ S.sysSel = null; render(); } }
+    return;
+  }
+  const a = t.dataset.act, id = t.dataset.id;
+  if (a === "lens"){ S.lens = t.dataset.l; S.sysSel = null; S.adding = false; S.sheetMode = null; render({dir:"in"}); }
+  else if (a === "tab"){ S.tab = t.dataset.t; render(); }
+  else if (a === "up"){
+    if (S.lens === "system"){ const from = S.sysPath.pop(); S.sysSel = from || null; }
+    else { const from = S.path.pop(); S.sel = from || null; S.adding = false; }
+    S.sheetMode = null; render({dir:"out"});
+  }
+  else if (a === "crumb"){
+    const i = +t.dataset.i;
+    if (S.lens === "system"){ const from = S.sysPath[i]; S.sysPath = S.sysPath.slice(0, i); S.sysSel = from || null; }
+    else { const from = S.path[i]; S.path = S.path.slice(0, i); S.sel = from || null; S.adding = false; }
+    S.sheetMode = null; render({dir:"out"});
+  }
+  else if (a === "sysopen"){ S.sysPath = [...S.sysPath, id]; S.sysSel = null; render({dir:"in"}); }
+  else if (a === "take"){ S.sheetMode = S.sheetMode === "take" ? null : "take"; S.dlStatus = ""; S.sel = null; S.adding = false; S.sysSel = null; if (window.innerWidth <= 860) S.tab = "graph"; render(); }
+  else if (a === "log"){ S.sheetMode = "log"; S.sysSel = null; render(); }
+  else if (a === "closemode"){ S.sheetMode = null; render(); }
+  else if (a === "describe"){ S.lens = "ideas"; S.path = ["tool"]; S.sel = null; S.adding = true; S.addPrefill = t.dataset.t; S.sysSel = null; render({dir:"in"}); const i = $("#nn"); if (i) i.focus(); }
+  else if (a === "download"){
+    if (!DL) return;
+    S.dlStatus = "Preparing…"; render();
+    try { await DL.save({filename:"stem-splitter-project.md", data:snapshot(buildSystem().T)}); S.dlStatus = "Saved."; }
+    catch (err){ S.dlStatus = err && err.code === "declined" ? "Download cancelled." : err && err.code === "rate_limited" ? "A download prompt is already open." : "Downloads aren’t available here."; }
+    render();
+  }
+  else if (a === "open"){ S.path = [...S.path, id]; S.sel = null; render({dir:"in"}); }
+  else if (a === "deselect"){ S.sel = null; S.changing = null; render(); }
+  else if (a === "sysdeselect"){ S.sysSel = null; render(); }
+  else if (a === "add"){ S.adding = true; S.addPrefill = ""; S.sel = null; S.sheetMode = null; render(); const i = $("#nn"); if (i) i.focus(); }
+  else if (a === "closeadd"){ S.adding = false; render(); }
+  else if (a === "addsave"){
+    const name = $("#nn").value.trim(); if (!name){ $("#nn").focus(); return; }
+    const nid = "u" + (++S.uc), after = $("#na") ? $("#na").value : "";
+    addNode(nid, cur(), name, $("#nd").value.trim() || "Described by you.", "you");
+    if (after) S.edges.push([after, nid, ""]);
+    S.adding = false; S.addPrefill = ""; S.sel = nid; render();
+    await say("Added “" + name + "”. I’ve built a stand-in for it in the finished system, so the tool still works. Open it any time to describe it in more detail, or tell me if you’re not sure how.");
+  }
+  else if (a === "del"){ const nm = S.nodes[id].title; removeNode(id); S.sel = null; render(); await say("Deleted “" + nm + "”. It’s gone from the system too."); }
+  else if (a === "flag"){ await applyFlag(id, +t.dataset.i); }
+  else if (a === "keep"){ S.nodes[id].decision.state = "kept"; render(); }
+  else if (a === "change"){ S.changing = id; render(); }
+  else if (a === "cancelchange"){ S.changing = null; render(); }
+  else if (a === "alt"){
+    const d = S.nodes[id].decision, alt = d.alts[+t.dataset.i]; S.changing = null;
+    if (alt.act === "local"){
+      S.chat.push({from:"you", text:alt.label}); renderChat();
+      await say("Changing it. Running on the computer takes more parts, so I’ll lay them out as nodes you can see and change.", 900);
+      goLocal(); go(["tool", "split"], null, true);
+      await say("Rebuilt from your direction. The model now ships with the tool, there’s a library node that runs it, and two steps to keep it fast. One decision is flagged for you: how the model gets onto people’s computers.");
+    } else {
+      d.state = "mine"; d.text = alt.text; render();
+      await say("Changed. The matching code in the System lens now follows your choice.");
+    }
+  }
+  else if (a === "own"){
+    const v = ($("#own").value || "").trim(); if (!v){ $("#own").focus(); return; }
+    S.changing = null;
+    if (id === "s-up"){
+      S.chat.push({from:"you", text:v}); renderChat();
+      goCustom(v); go(["tool", "split"], "s-custom", true);
+      await say("I replaced my plan with your node. Open it and describe the steps, and I’ll say what each one needs and flag anything I’d have to guess.");
+    } else {
+      const d = S.nodes[id].decision; d.state = "mine"; d.text = v; render();
+      await say("Using your way. I’ll check it against the rest of the project and flag anything that clashes.");
+    }
+  }
+  else if (a === "seesys"){ S.lens = "system"; S.sysPath = ["sep"]; S.sysSel = "sp-lib"; render({dir:"in"}); }
+  else if (a === "toidea"){ const p = pathTo(id); S.lens = "ideas"; S.path = p; S.sel = id; S.sysSel = null; render({dir:"in"}); }
+  else if (a === "build"){ const sc = SCRIPTS.find(s => s.id === "build"); if (window.innerWidth <= 860) { S.tab = "chat"; render(); } runScript(sc); }
+  else if (a === "chip"){ const sc = SCRIPTS.find(s => s.id === t.dataset.s); if (sc && sc.avail()) runScript(sc); }
+  else if (a === "restart"){
+    if (!t.dataset.armed){ t.dataset.armed = "1"; t.textContent = "Tap again"; setTimeout(() => { delete t.dataset.armed; t.textContent = "Restart"; }, 3000); return; }
+    delete t.dataset.armed; t.textContent = "Restart"; reset(); render();
+  }
+});
+$("#form").addEventListener("submit", e => {
+  e.preventDefault(); const v = $("#inp").value.trim(); if (!v) return; $("#inp").value = ""; handleTyped(v);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape"){ if (S.sel || S.adding || S.sysSel || S.sheetMode){ S.sel = null; S.adding = false; S.sysSel = null; S.sheetMode = null; render(); } }
+});
+let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => render(), 120); });
+
+let DL = null;
+reset(); render();
+(async () => {
+  try { if (window.claude && typeof window.claude.use === "function") DL = await window.claude.use("downloads"); } catch (e) { DL = null; }
+  if (S && S.sheetMode === "take") render();
+})();
+</script>
+</body>
+</html>
