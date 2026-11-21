@@ -1,0 +1,919 @@
+{
+  "format": "abstractcore/0.1",
+  "name": "An online clothing store",
+  "layers": [
+    "The idea",
+    "Where it lives",
+    "What it does",
+    "The details"
+  ],
+  "root": "idea",
+  "nodes": {
+    "idea": {
+      "id": "idea",
+      "parent": null,
+      "title": "An online clothing store",
+      "description": "Sell my own clothing designs online.",
+      "author": "user",
+      "kind": "idea",
+      "questions": [
+        {
+          "id": "platform",
+          "kind": "must",
+          "type": "single",
+          "text": "Where will your customers use it?",
+          "why": "This shapes almost everything after it, including cost and time. The AI should not pick this for you.",
+          "options": [
+            {
+              "value": "web",
+              "label": "A website",
+              "note": "Opens in any browser, on phones and computers.",
+              "needs": [
+                "A web address (domain name), renewed yearly",
+                "Web hosting to keep the site online"
+              ],
+              "spawns": [
+                "site"
+              ]
+            },
+            {
+              "value": "app",
+              "label": "A phone app",
+              "note": "Installed from the App Store or Google Play.",
+              "needs": [
+                "Apple and Google developer accounts (yearly fees)",
+                "App store review before each release"
+              ],
+              "spawns": [
+                "site"
+              ]
+            },
+            {
+              "value": "both",
+              "label": "Both",
+              "note": "Reaches the most people, costs the most.",
+              "needs": [
+                "A web address (domain name), renewed yearly",
+                "Web hosting to keep the site online",
+                "Apple and Google developer accounts (yearly fees)",
+                "Two things to build and keep updated"
+              ],
+              "spawns": [
+                "site"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "site": {
+      "id": "site",
+      "parent": "idea",
+      "title": "Where it lives",
+      "description": "Where your store lives",
+      "author": "user",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "buyers",
+          "kind": "ask",
+          "type": "single",
+          "text": "Who will be buying?",
+          "default": "Everyday shoppers buying one or two items.",
+          "options": [
+            {
+              "value": "retail",
+              "label": "Everyday shoppers"
+            },
+            {
+              "value": "bulk",
+              "label": "Shops buying in bulk",
+              "needs": [
+                "Bulk price lists and minimum order sizes"
+              ]
+            },
+            {
+              "value": "both",
+              "label": "Both",
+              "needs": [
+                "Two price lists: regular and bulk",
+                "A way to mark some customers as bulk buyers"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "features",
+          "kind": "ask",
+          "type": "multi",
+          "text": "What should people be able to do?",
+          "hint": "Pick everything you want. Each one becomes its own part of your plan.",
+          "default": "Nothing gets planned until you pick at least one.",
+          "options": [
+            {
+              "value": "browse",
+              "label": "Browse my clothes",
+              "spawns": [
+                "browse"
+              ]
+            },
+            {
+              "value": "buy",
+              "label": "Buy and pay",
+              "spawns": [
+                "buy"
+              ]
+            },
+            {
+              "value": "account",
+              "label": "Have an account",
+              "spawns": [
+                "account"
+              ]
+            },
+            {
+              "value": "track",
+              "label": "Track their order",
+              "spawns": [
+                "track"
+              ]
+            },
+            {
+              "value": "fav",
+              "label": "Save favourites",
+              "spawns": [
+                "fav"
+              ]
+            },
+            {
+              "value": "reviews",
+              "label": "Leave reviews",
+              "spawns": [
+                "reviews"
+              ]
+            }
+          ]
+        }
+      ],
+      "suggestions": [
+        {
+          "id": "admin",
+          "text": "A place for you to add clothes and see orders",
+          "why": "Almost every store needs this. The AI flags it because it was not on your list.",
+          "spawns": [
+            "admin"
+          ],
+          "state": "open"
+        }
+      ]
+    },
+    "browse": {
+      "id": "browse",
+      "parent": "site",
+      "title": "Browse my clothes",
+      "description": "How people look through what you sell",
+      "author": "user",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "find",
+          "kind": "ask",
+          "type": "multi",
+          "text": "How should people find things?",
+          "default": "One list of everything, newest first.",
+          "options": [
+            {
+              "value": "cat",
+              "label": "By category",
+              "note": "Dresses, shirts, trousers and so on.",
+              "needs": [
+                "Your list of categories"
+              ]
+            },
+            {
+              "value": "search",
+              "label": "A search bar"
+            },
+            {
+              "value": "size",
+              "label": "Filter by size"
+            },
+            {
+              "value": "colour",
+              "label": "Filter by colour",
+              "needs": [
+                "Each item tagged with its colours"
+              ]
+            },
+            {
+              "value": "price",
+              "label": "Filter by price"
+            }
+          ]
+        },
+        {
+          "id": "photos",
+          "kind": "ask",
+          "type": "single",
+          "text": "How much should people see of each item?",
+          "default": "A few photos from different angles.",
+          "options": [
+            {
+              "value": "one",
+              "label": "One photo",
+              "needs": [
+                "One good photo per item"
+              ]
+            },
+            {
+              "value": "few",
+              "label": "A few photos from different angles",
+              "needs": [
+                "Three to five photos per item"
+              ]
+            },
+            {
+              "value": "video",
+              "label": "Photos and a short video",
+              "needs": [
+                "A short video per item",
+                "Video hosting (pages load slower on weak connections)"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "soldout",
+          "kind": "must",
+          "type": "single",
+          "text": "What happens when a size sells out?",
+          "why": "This is a business choice about your stock, not a technical one.",
+          "options": [
+            {
+              "value": "hide",
+              "label": "Hide that size"
+            },
+            {
+              "value": "show",
+              "label": "Show it as sold out"
+            },
+            {
+              "value": "notify",
+              "label": "Let people ask to be told when it is back",
+              "needs": [
+                "Emails or messages to say it is back"
+              ]
+            },
+            {
+              "value": "pre",
+              "label": "Let people pre-order it",
+              "needs": [
+                "Taking payment now and delivering later",
+                "A clear waiting time for each pre-order"
+              ]
+            }
+          ]
+        }
+      ],
+      "suggestions": [
+        {
+          "id": "new",
+          "text": "A “New arrivals” section",
+          "why": "Gives returning shoppers a reason to look again.",
+          "needs": [
+            "A date on each item for when it was added"
+          ],
+          "state": "open"
+        },
+        {
+          "id": "sizeguide",
+          "text": "A size guide",
+          "why": "Clothing stores get fewer returns when sizes are explained.",
+          "spawns": [
+            "sizeguide"
+          ],
+          "state": "open"
+        }
+      ]
+    },
+    "sizeguide": {
+      "id": "sizeguide",
+      "parent": "browse",
+      "title": "Size guide",
+      "description": "Helping people pick the right size",
+      "author": "ai",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "std",
+          "kind": "ask",
+          "type": "single",
+          "text": "What sizes do you use?",
+          "default": "Letter sizes: S, M, L, XL.",
+          "options": [
+            {
+              "value": "letters",
+              "label": "Letter sizes (S, M, L)"
+            },
+            {
+              "value": "num",
+              "label": "UK or US number sizes"
+            },
+            {
+              "value": "own",
+              "label": "My own measurements",
+              "needs": [
+                "A measurement chart for each type of item"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "how",
+          "kind": "ask",
+          "type": "single",
+          "text": "How should the guide help?",
+          "default": "A chart people can read.",
+          "options": [
+            {
+              "value": "chart",
+              "label": "A chart people can read"
+            },
+            {
+              "value": "quiz",
+              "label": "Ask their height and fit, then suggest a size",
+              "needs": [
+                "Your rules for which size suits whom"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "buy": {
+      "id": "buy",
+      "parent": "site",
+      "title": "Buy and pay",
+      "description": "Checkout, payment and delivery",
+      "author": "user",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "pay",
+          "kind": "must",
+          "type": "multi",
+          "text": "How will you get paid?",
+          "why": "Each option changes your costs, your risk and who does the checking. Only you can weigh that.",
+          "options": [
+            {
+              "value": "card",
+              "label": "Card payments online",
+              "needs": [
+                "A payment provider account (it takes a small fee per sale)"
+              ]
+            },
+            {
+              "value": "transfer",
+              "label": "Bank transfer",
+              "needs": [
+                "Someone to check each transfer by hand before shipping"
+              ]
+            },
+            {
+              "value": "cod",
+              "label": "Pay on delivery",
+              "needs": [
+                "Riders who can collect payment",
+                "A plan for deliveries that get refused"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "where",
+          "kind": "must",
+          "type": "single",
+          "text": "Where will you deliver?",
+          "why": "Your delivery area decides prices, partners and paperwork.",
+          "options": [
+            {
+              "value": "city",
+              "label": "My city only",
+              "spawns": [
+                "delivery"
+              ]
+            },
+            {
+              "value": "country",
+              "label": "Across the country",
+              "needs": [
+                "A courier that covers the whole country"
+              ],
+              "spawns": [
+                "delivery"
+              ]
+            },
+            {
+              "value": "intl",
+              "label": "Other countries too",
+              "needs": [
+                "An international courier",
+                "Customs forms for each parcel",
+                "Prices in more than one currency"
+              ],
+              "spawns": [
+                "delivery"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fail",
+          "kind": "must",
+          "type": "single",
+          "text": "If a payment fails, what should the customer see?",
+          "why": "The AI could guess, but a wrong guess loses sales or annoys customers.",
+          "options": [
+            {
+              "value": "retry",
+              "label": "Try again, with the cart kept"
+            },
+            {
+              "value": "other",
+              "label": "Offer another way to pay"
+            },
+            {
+              "value": "remind",
+              "label": "Keep the cart and remind them later",
+              "needs": [
+                "Reminder emails or messages"
+              ]
+            }
+          ]
+        }
+      ],
+      "suggestions": [
+        {
+          "id": "codes",
+          "text": "Discount codes",
+          "why": "Useful for launches, sales and working with influencers.",
+          "spawns": [
+            "codes"
+          ],
+          "state": "open"
+        },
+        {
+          "id": "receipt",
+          "text": "Send a receipt after every order",
+          "why": "Customers expect proof of what they bought.",
+          "needs": [
+            "An email service for receipts"
+          ],
+          "state": "open"
+        }
+      ]
+    },
+    "delivery": {
+      "id": "delivery",
+      "parent": "buy",
+      "title": "Delivery",
+      "description": "Getting orders to people",
+      "author": "user",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "fee",
+          "kind": "must",
+          "type": "text",
+          "text": "Describe your delivery fee in your own words.",
+          "why": "Only you know your prices. Write it the way you would explain it to a customer."
+        },
+        {
+          "id": "feeq",
+          "kind": "must",
+          "type": "single",
+          "text": "Does the free-delivery amount count before or after discounts?",
+          "why": "Your description did not say, and each answer changes what customers pay.",
+          "showIf": "fee",
+          "options": [
+            {
+              "value": "before",
+              "label": "Before discounts"
+            },
+            {
+              "value": "after",
+              "label": "After discounts"
+            },
+            {
+              "value": "na",
+              "label": "My fee has no free-delivery amount"
+            }
+          ]
+        },
+        {
+          "id": "who",
+          "kind": "ask",
+          "type": "single",
+          "text": "Who does the delivering?",
+          "default": "A courier company.",
+          "options": [
+            {
+              "value": "me",
+              "label": "Me or my team"
+            },
+            {
+              "value": "courier",
+              "label": "A courier company",
+              "needs": [
+                "An account with a courier company"
+              ]
+            },
+            {
+              "value": "pickup",
+              "label": "Customers pick up",
+              "needs": [
+                "A pickup address and opening hours"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "codes": {
+      "id": "codes",
+      "parent": "buy",
+      "title": "Discount codes",
+      "description": "Money off at checkout",
+      "author": "ai",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "kinds",
+          "kind": "ask",
+          "type": "multi",
+          "text": "What kinds of discount?",
+          "default": "Percentage off only.",
+          "options": [
+            {
+              "value": "pct",
+              "label": "Percentage off"
+            },
+            {
+              "value": "fixed",
+              "label": "A fixed amount off"
+            },
+            {
+              "value": "free",
+              "label": "Free delivery"
+            }
+          ]
+        },
+        {
+          "id": "stack",
+          "kind": "must",
+          "type": "single",
+          "text": "Can someone use more than one code at once?",
+          "why": "Combined codes can wipe out your profit. This is your call.",
+          "options": [
+            {
+              "value": "no",
+              "label": "No, one code per order"
+            },
+            {
+              "value": "yes",
+              "label": "Yes, they can combine codes"
+            }
+          ]
+        }
+      ]
+    },
+    "account": {
+      "id": "account",
+      "parent": "site",
+      "title": "Have an account",
+      "description": "Signing in and saved details",
+      "author": "user",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "guest",
+          "kind": "must",
+          "type": "single",
+          "text": "Can people buy without making an account?",
+          "why": "Forcing sign-up gets you more contacts but loses some buyers. Only you can make that trade.",
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes, guest checkout is fine"
+            },
+            {
+              "value": "no",
+              "label": "No, they must sign up first"
+            }
+          ]
+        },
+        {
+          "id": "signin",
+          "kind": "ask",
+          "type": "single",
+          "text": "How should people sign in?",
+          "default": "Email with a one-time code, so nobody needs a password.",
+          "options": [
+            {
+              "value": "pw",
+              "label": "Email and password",
+              "needs": [
+                "A way to reset forgotten passwords"
+              ]
+            },
+            {
+              "value": "code",
+              "label": "Email with a one-time code"
+            },
+            {
+              "value": "social",
+              "label": "Google or Apple sign-in",
+              "needs": [
+                "Setup with Google and Apple"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "delete",
+          "kind": "must",
+          "type": "single",
+          "text": "If someone asks you to delete their data, what do you keep?",
+          "why": "This depends on the rules where you operate and on your records. Check with someone qualified.",
+          "options": [
+            {
+              "value": "all",
+              "label": "Delete everything"
+            },
+            {
+              "value": "orders",
+              "label": "Keep order records, delete the rest",
+              "needs": [
+                "A note of which records you keep, and why"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "track": {
+      "id": "track",
+      "parent": "site",
+      "title": "Track their order",
+      "description": "After someone has paid",
+      "author": "user",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "notify",
+          "kind": "ask",
+          "type": "multi",
+          "text": "How should they hear about updates?",
+          "default": "By email.",
+          "options": [
+            {
+              "value": "email",
+              "label": "Email",
+              "needs": [
+                "An email service"
+              ]
+            },
+            {
+              "value": "sms",
+              "label": "Text message",
+              "needs": [
+                "A text message service (costs per message)"
+              ]
+            },
+            {
+              "value": "wa",
+              "label": "WhatsApp",
+              "needs": [
+                "A WhatsApp Business account"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "cancel",
+          "kind": "must",
+          "type": "single",
+          "text": "Can they cancel after paying?",
+          "why": "Cancellation rules affect refunds and your stock.",
+          "options": [
+            {
+              "value": "no",
+              "label": "No"
+            },
+            {
+              "value": "ship",
+              "label": "Yes, until it ships"
+            },
+            {
+              "value": "time",
+              "label": "Yes, within a set time",
+              "needs": [
+                "Your cancellation time limit"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "returns",
+          "kind": "must",
+          "type": "single",
+          "text": "Do you accept returns?",
+          "why": "Your return policy is a promise to customers. It has to come from you.",
+          "options": [
+            {
+              "value": "none",
+              "label": "No returns"
+            },
+            {
+              "value": "exchange",
+              "label": "Exchanges only"
+            },
+            {
+              "value": "refund",
+              "label": "Returns with a refund",
+              "needs": [
+                "A refund process with your payment provider",
+                "A written return policy"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fav": {
+      "id": "fav",
+      "parent": "site",
+      "title": "Save favourites",
+      "description": "A wishlist for later",
+      "author": "user",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "acct",
+          "kind": "ask",
+          "type": "single",
+          "text": "Should saving favourites need an account?",
+          "default": "Saved on their device, no account needed.",
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes, favourites need an account"
+            },
+            {
+              "value": "device",
+              "label": "No, save them on their device",
+              "note": "They lose them if they switch phones."
+            }
+          ]
+        }
+      ],
+      "suggestions": [
+        {
+          "id": "sale",
+          "text": "Tell people when a favourite goes on sale",
+          "why": "Brings shoppers back at the right moment.",
+          "needs": [
+            "Emails or messages for sale alerts"
+          ],
+          "state": "open"
+        }
+      ]
+    },
+    "reviews": {
+      "id": "reviews",
+      "parent": "site",
+      "title": "Leave reviews",
+      "description": "What other shoppers say",
+      "author": "user",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "who",
+          "kind": "must",
+          "type": "single",
+          "text": "Who can leave a review?",
+          "why": "Open reviews bring more feedback, but also fake ones.",
+          "options": [
+            {
+              "value": "any",
+              "label": "Anyone"
+            },
+            {
+              "value": "buyers",
+              "label": "Only people who bought the item"
+            }
+          ]
+        },
+        {
+          "id": "check",
+          "kind": "must",
+          "type": "single",
+          "text": "Do you check reviews before they appear?",
+          "why": "This is about your brand and your time.",
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes, I approve each one",
+              "needs": [
+                "Time set aside to approve reviews"
+              ]
+            },
+            {
+              "value": "no",
+              "label": "No, but I can remove them later"
+            }
+          ]
+        }
+      ],
+      "suggestions": [
+        {
+          "id": "photos",
+          "text": "Photos in reviews",
+          "why": "Shoppers trust real photos of how clothes fit.",
+          "needs": [
+            "Storage for customer photos"
+          ],
+          "state": "open"
+        }
+      ]
+    },
+    "admin": {
+      "id": "admin",
+      "parent": "site",
+      "title": "Manage my store",
+      "description": "Your side: stock and orders",
+      "author": "ai",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "who",
+          "kind": "ask",
+          "type": "single",
+          "text": "Who will manage the store?",
+          "default": "Just you.",
+          "options": [
+            {
+              "value": "me",
+              "label": "Just me"
+            },
+            {
+              "value": "staff",
+              "label": "Me and staff",
+              "needs": [
+                "Staff logins that only see what they need"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "add",
+          "kind": "ask",
+          "type": "single",
+          "text": "How will you add new clothes?",
+          "default": "One at a time, with a simple form.",
+          "options": [
+            {
+              "value": "one",
+              "label": "One at a time"
+            },
+            {
+              "value": "sheet",
+              "label": "Upload a spreadsheet",
+              "needs": [
+                "A spreadsheet template to fill in"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "edges": [
+    {
+      "from": "admin",
+      "to": "browse",
+      "label": "New clothes"
+    },
+    {
+      "from": "browse",
+      "to": "buy",
+      "label": "Items in the cart"
+    },
+    {
+      "from": "buy",
+      "to": "track",
+      "label": "Paid order"
+    }
+  ],
+  "log": []
+}

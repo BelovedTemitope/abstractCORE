@@ -1,0 +1,429 @@
+{
+  "format": "abstractcore/0.1",
+  "name": "A stem separation tool",
+  "layers": [
+    "The idea",
+    "Core parts",
+    "How it works",
+    "Functions"
+  ],
+  "root": "tool",
+  "nodes": {
+    "tool": {
+      "id": "tool",
+      "parent": null,
+      "title": "A stem separation tool",
+      "description": "Split any song into separate parts: vocals, drums, bass and the rest.",
+      "author": "user",
+      "kind": "idea",
+      "suggestions": [
+        {
+          "id": "plugin",
+          "text": "Make it work as a plugin inside music software",
+          "why": "Producers can split a track without leaving their session.",
+          "spawns": [
+            "plugin"
+          ],
+          "state": "open"
+        }
+      ]
+    },
+    "load": {
+      "id": "load",
+      "parent": "tool",
+      "title": "Load a song",
+      "description": "Pick a song file to work on.",
+      "author": "user",
+      "kind": "component",
+      "decision": {
+        "state": "open",
+        "text": "Reads WAV, MP3 and FLAC files.",
+        "why": "Covers almost every song people have. Reading these comes built into the plugin toolkit.",
+        "alternatives": [
+          {
+            "label": "WAV files only",
+            "text": "Reads WAV files only."
+          },
+          {
+            "label": "Any audio or video file",
+            "text": "Reads any audio or video file and pulls out the sound.",
+            "needs": [
+              "An extra library to read video files"
+            ]
+          }
+        ]
+      }
+    },
+    "split": {
+      "id": "split",
+      "parent": "tool",
+      "title": "Split into stems",
+      "description": "Vocals, drums, bass and everything else, as separate tracks.",
+      "author": "user",
+      "kind": "component",
+      "decision": {
+        "state": "open",
+        "text": "Uses an online separation service (an API) with an existing AI model.",
+        "why": "Fastest to build, with good results. Trade-offs: it costs money per song, needs internet, and the song leaves the user's computer.",
+        "spawns": [
+          "s-up",
+          "s-back"
+        ],
+        "alternatives": [
+          {
+            "label": "Run it on the user's computer instead",
+            "text": "Runs an AI model on the user's computer.",
+            "spawns": [
+              "s-model",
+              "s-lib",
+              "s-gpu",
+              "s-run",
+              "s-back2"
+            ],
+            "needs": [
+              "A separation model you are allowed to ship"
+            ]
+          }
+        ]
+      },
+      "suggestions": [
+        {
+          "id": "bleed",
+          "text": "Reduce bleed between stems",
+          "why": "Faint drums in the vocal stem are the most common complaint about stem splitters.",
+          "spawns": [
+            "bleed"
+          ],
+          "state": "open"
+        },
+        {
+          "id": "backing",
+          "text": "Separate lead and backing vocals",
+          "why": "Useful for remixes and karaoke.",
+          "spawns": [
+            "backing"
+          ],
+          "state": "open"
+        }
+      ]
+    },
+    "listen": {
+      "id": "listen",
+      "parent": "tool",
+      "title": "Listen to each stem",
+      "description": "Play the stems on their own or together.",
+      "author": "user",
+      "kind": "component",
+      "decision": {
+        "state": "open",
+        "text": "Solo and mute buttons for each stem, with a waveform.",
+        "why": "This is how most music tools let you check separate parts.",
+        "alternatives": [
+          {
+            "label": "Just play and stop per stem",
+            "text": "One play button per stem, nothing else."
+          }
+        ]
+      }
+    },
+    "save": {
+      "id": "save",
+      "parent": "tool",
+      "title": "Save the stems",
+      "description": "Keep each stem as its own file.",
+      "author": "user",
+      "kind": "component",
+      "decision": {
+        "state": "open",
+        "text": "Saves each stem as a WAV file named after the song.",
+        "why": "WAV keeps full quality and every music tool can open it.",
+        "alternatives": [
+          {
+            "label": "Let people choose WAV or MP3",
+            "text": "People choose WAV or MP3 when saving.",
+            "needs": [
+              "An MP3 encoder"
+            ]
+          }
+        ]
+      }
+    },
+    "s-up": {
+      "id": "s-up",
+      "parent": "split",
+      "title": "Send the song to a separation service",
+      "description": "An existing AI model, run online.",
+      "author": "ai",
+      "kind": "external",
+      "needs": [
+        "An account with a separation service (costs per song)",
+        "Internet access while splitting"
+      ]
+    },
+    "s-back": {
+      "id": "s-back",
+      "parent": "split",
+      "title": "Get four stems back",
+      "description": "Vocals, drums, bass, other.",
+      "author": "ai",
+      "kind": "function"
+    },
+    "s-model": {
+      "id": "s-model",
+      "parent": "split",
+      "title": "Include the separation model",
+      "description": "The AI model ships with the tool. It is about 300 MB.",
+      "author": "user",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "delivery",
+          "kind": "must",
+          "type": "single",
+          "text": "Should the model be inside the installer, or download the first time someone uses the tool?",
+          "why": "It trades download size against needing internet once. That's a product call.",
+          "options": [
+            {
+              "value": "installer",
+              "label": "Inside the installer (bigger download)"
+            },
+            {
+              "value": "download",
+              "label": "Download on first use (needs internet once)",
+              "needs": [
+                "Somewhere to host the model file"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "s-lib": {
+      "id": "s-lib",
+      "parent": "split",
+      "title": "Model runtime library",
+      "description": "A ready-made library that runs AI models on a computer. One node stands for the whole library.",
+      "author": "ai",
+      "kind": "external"
+    },
+    "l1": {
+      "id": "l1",
+      "parent": "s-lib",
+      "title": "Load a model file",
+      "description": "From the library's documentation.",
+      "author": "doc",
+      "kind": "function"
+    },
+    "l2": {
+      "id": "l2",
+      "parent": "s-lib",
+      "title": "Run the model on some audio",
+      "description": "From the library's documentation.",
+      "author": "doc",
+      "kind": "function",
+      "code": {
+        "lang": "cpp",
+        "source": "// From the library's documentation\nstd::vector<Stem> run(Model& m, const AudioBuffer& chunk) {\n  auto input = toTensor(chunk);          // samples → model input\n  auto output = m.forward(input);        // vocals, drums, bass, other\n  return toStems(output, chunk.sampleRate);\n}"
+      }
+    },
+    "l3": {
+      "id": "l3",
+      "parent": "s-lib",
+      "title": "Choose processor or graphics card",
+      "description": "From the library's documentation.",
+      "author": "doc",
+      "kind": "function"
+    },
+    "s-gpu": {
+      "id": "s-gpu",
+      "parent": "split",
+      "title": "Use the graphics card if there is one",
+      "description": "Much faster. Falls back to the processor.",
+      "author": "user",
+      "kind": "component"
+    },
+    "s-run": {
+      "id": "s-run",
+      "parent": "split",
+      "title": "Work through the song in 10-second pieces",
+      "description": "Shows progress as it goes and keeps memory use low.",
+      "author": "user",
+      "kind": "function",
+      "code": {
+        "lang": "cpp",
+        "source": "// Your idea: \"Work through the song in 10-second pieces\"\nfor (int start = 0; start < song.length(); start += 10 * song.sampleRate) {\n  auto stems = run(model, song.slice(start, 10 * song.sampleRate));\n  append(result, stems);\n  progress(start / (float) song.length());\n}"
+      }
+    },
+    "s-back2": {
+      "id": "s-back2",
+      "parent": "split",
+      "title": "Get four stems back",
+      "description": "Vocals, drums, bass, other.",
+      "author": "user",
+      "kind": "function"
+    },
+    "bleed": {
+      "id": "bleed",
+      "parent": "split",
+      "title": "Reduce bleed between stems",
+      "description": "Lower what each stem picks up from the others.",
+      "author": "ai",
+      "kind": "function"
+    },
+    "backing": {
+      "id": "backing",
+      "parent": "split",
+      "title": "Separate lead and backing vocals",
+      "description": "Two vocal stems instead of one.",
+      "author": "ai",
+      "kind": "function"
+    },
+    "plugin": {
+      "id": "plugin",
+      "parent": "tool",
+      "title": "Works as a plugin",
+      "description": "Runs inside music software, on a track.",
+      "author": "ai",
+      "kind": "component",
+      "questions": [
+        {
+          "id": "format",
+          "kind": "must",
+          "type": "single",
+          "text": "Which music software should it work in?",
+          "why": "Plugin formats differ: VST3 works in most, and Logic Pro needs AU. Only you know your audience.",
+          "options": [
+            {
+              "value": "vst3",
+              "label": "Ableton, FL Studio and others (VST3)",
+              "needs": [
+                "A VST3 build of the plugin"
+              ]
+            },
+            {
+              "value": "au",
+              "label": "Logic Pro (AU)",
+              "needs": [
+                "An AU build, signed for macOS"
+              ]
+            },
+            {
+              "value": "both",
+              "label": "Both",
+              "needs": [
+                "A VST3 build of the plugin",
+                "An AU build, signed for macOS"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "p1": {
+      "id": "p1",
+      "parent": "plugin",
+      "title": "Shows up in the plugin list",
+      "description": "People add it to a track like any other effect.",
+      "author": "ai",
+      "kind": "function"
+    },
+    "p2": {
+      "id": "p2",
+      "parent": "plugin",
+      "title": "Takes audio from its track",
+      "description": "No need to load a file.",
+      "author": "ai",
+      "kind": "function"
+    },
+    "p3": {
+      "id": "p3",
+      "parent": "plugin",
+      "title": "Sends each stem to its own track",
+      "description": "So people can mix them right away.",
+      "author": "ai",
+      "kind": "function"
+    }
+  },
+  "edges": [
+    {
+      "from": "load",
+      "to": "split",
+      "label": "The song"
+    },
+    {
+      "from": "split",
+      "to": "listen",
+      "label": "Four stems"
+    },
+    {
+      "from": "split",
+      "to": "save",
+      "label": "Four stems"
+    },
+    {
+      "from": "s-up",
+      "to": "s-back",
+      "label": "Waits for the result"
+    },
+    {
+      "from": "s-model",
+      "to": "s-lib",
+      "label": "Model file"
+    },
+    {
+      "from": "s-gpu",
+      "to": "s-lib",
+      "label": "Where to run"
+    },
+    {
+      "from": "s-lib",
+      "to": "s-run",
+      "label": "Runs the model"
+    },
+    {
+      "from": "s-run",
+      "to": "s-back2",
+      "label": "Stems"
+    },
+    {
+      "from": "l1",
+      "to": "l2",
+      "label": "Loaded model"
+    },
+    {
+      "from": "l3",
+      "to": "l2",
+      "label": "Device"
+    },
+    {
+      "from": "s-back",
+      "to": "bleed",
+      "label": "Stems to clean"
+    },
+    {
+      "from": "s-back2",
+      "to": "bleed",
+      "label": "Stems to clean"
+    },
+    {
+      "from": "bleed",
+      "to": "backing",
+      "label": "Vocal stem"
+    },
+    {
+      "from": "plugin",
+      "to": "load",
+      "label": "Audio from the track"
+    },
+    {
+      "from": "p1",
+      "to": "p2"
+    },
+    {
+      "from": "p2",
+      "to": "p3",
+      "label": "Four stems"
+    }
+  ],
+  "log": []
+}
