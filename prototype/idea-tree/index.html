@@ -215,7 +215,6 @@ textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:9p
 <script>
 const LV = ["The idea", "Where it lives", "What it does", "The details"];
 const SITE_T = {web:"A website", app:"A phone app", both:"A website and a phone app"};
-const TECH_URL = "https://claude.ai/artifact/KEXQioh9T5qBn69S52xQbN";
 
 const DEF = {
   idea:{level:0, title:"An online clothing store", sub:"Sell my own clothing designs online.", questions:[
@@ -553,7 +552,7 @@ function renderNeeds(C){
     h += '<div class="status red"><strong>' + C.open.length + " decision" + (C.open.length > 1 ? "s" : "") + " still need you</strong><p>Nothing gets built around a gap. These are the answers the AI will not guess.</p><ul class=\"jl\">" +
       C.open.map(o => '<li><button data-act="goto" data-key="' + o.key + '" data-q="' + o.q.id + '">' + esc(o.q.text) + "<small>" + esc(titleOf(o.key)) + "</small></button></li>").join("") + "</ul></div>";
   } else {
-    h += '<div class="status ok"><strong>Every must-decide question is answered.</strong><p>Your plan is ready to become a technical node graph, where each part turns into nodes with code inside. <a href="' + TECH_URL + '" target="_blank" rel="noopener">See what that looks like</a>.</p></div>';
+    h += '<div class="status ok"><strong>Every must-decide question is answered.</strong><p>Your plan is ready to become a technical node graph, where each part turns into nodes with code inside.</p></div>';
   }
   h += '<div class="sec">You will need</div>';
   if (C.needs.length){
