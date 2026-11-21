@@ -1,0 +1,372 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BelovedTemitope/abstractCORE/schema/abstractcore.schema.json",
+  "title": "abstractCORE project",
+  "description": "A layered node graph of a software system: idea \u2192 core parts \u2192 behaviour \u2192 functions.",
+  "type": "object",
+  "required": [
+    "format",
+    "name",
+    "layers",
+    "root",
+    "nodes",
+    "edges"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "format": {
+      "const": "abstractcore/0.1"
+    },
+    "name": {
+      "type": "string"
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "root": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "id",
+          "parent",
+          "title",
+          "author"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "parent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "author": {
+            "enum": [
+              "user",
+              "ai",
+              "doc"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "idea",
+              "component",
+              "external",
+              "function"
+            ]
+          },
+          "decision": {
+            "type": "object",
+            "required": [
+              "state",
+              "text",
+              "why",
+              "alternatives"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "state": {
+                "enum": [
+                  "open",
+                  "accepted",
+                  "overridden"
+                ]
+              },
+              "text": {
+                "type": "string"
+              },
+              "why": {
+                "type": "string"
+              },
+              "spawns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Node ids that exist only while this choice is in effect."
+              },
+              "alternatives": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "label"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "label": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "spawns": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Node ids that exist only while this choice is in effect."
+                    },
+                    "needs": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "chosen": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "kind",
+                "type",
+                "text"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "must",
+                    "ask"
+                  ],
+                  "description": "must = only the person can answer; ask = the AI may use `default` if skipped."
+                },
+                "type": {
+                  "enum": [
+                    "single",
+                    "multi",
+                    "text"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                },
+                "hint": {
+                  "type": "string"
+                },
+                "why": {
+                  "type": "string"
+                },
+                "default": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "value",
+                      "label"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "value": {
+                        "type": "string"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "note": {
+                        "type": "string"
+                      },
+                      "needs": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "spawns": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Node ids that exist only while this choice is in effect."
+                      }
+                    }
+                  }
+                },
+                "showIf": {
+                  "type": "string"
+                },
+                "answer": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "required": [
+                        "skipped"
+                      ],
+                      "properties": {
+                        "skipped": {
+                          "const": true
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "text",
+                "why"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "why": {
+                  "type": "string"
+                },
+                "needs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "spawns": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Node ids that exist only while this choice is in effect."
+                },
+                "state": {
+                  "enum": [
+                    "open",
+                    "accepted",
+                    "dismissed"
+                  ]
+                }
+              }
+            }
+          },
+          "needs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "code": {
+            "type": "object",
+            "required": [
+              "lang",
+              "source"
+            ],
+            "properties": {
+              "lang": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            }
+          },
+          "reviewed": {
+            "type": "boolean",
+            "description": "For parts the AI added: the architect has reviewed and kept it."
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "from",
+          "to"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "at",
+          "node",
+          "action",
+          "detail"
+        ],
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "node": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
