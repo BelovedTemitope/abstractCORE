@@ -1,40 +1,103 @@
 # abstractCORE
 
-**Node-based, layered AI development: see what you are building, from the core idea down to the code.**
+**You are the architect. The AI is your assistant.**
 
-abstractCORE is an early-stage project exploring a more transparent way to build software with AI. Instead of treating an AI-generated codebase as a pile of files to read after the fact, abstractCORE expresses development as **nested node graphs**, in layers of abstraction:
+abstractCORE is a development pipeline where you engineer a system at whatever level of detail you choose, and the AI works beneath you. You decide what the system is and how it fits together. The AI fills in what you leave open, and every choice it makes stays on the record. You can review it, change it, or leave it. You never have to touch code unless you want to.
 
-1. **The idea** – what the system is for.
-2. **Core functionality and relationships** – the major parts and how they connect.
-3. **Behaviour and flow** – what each part does and how data moves between them.
-4. **Functions** – the units that actually do things, with code inside.
+**[▶ Try the live demo](https://belovedtemitope.github.io/abstractCORE/demo/)** · [Landing page](https://belovedtemitope.github.io/abstractCORE/) · [Original prototypes](#prototypes)
 
-A developer can describe intent in plain language and have it laid out as nodes, or let the AI express its current implementation as a graph that can be opened, questioned and changed at any level. The aim is **responsible AI development**: decisions are visible, the AI's assumptions are labelled as the AI's, and the person stays in charge of the choices that are theirs to make.
+![Architect view: the layered graph on the left, the selected part with the AI's decision you overrode on the right](docs/media/architect-view.png)
 
-> **Status:** foundations / prototype stage. What exists today is two interactive HTML prototypes of the interaction model. The graph engine, AI integration and code round-tripping are planned, not built. See [ROADMAP.md](ROADMAP.md).
+## The problem
+
+AI can now write software faster than people can read it. That leaves two bad options: review every line, or trust a codebase you don't understand. abstractCORE adds a third: **abstention without losing control**. You step back from the code, but not from the decisions.
+
+It does this with two ideas:
+
+- **Levels of abstraction.** A system is one graph of nested parts, from the idea down to functions and code. Work at any level. Deeper layers fold away until you choose to look.
+
+  | Level | You see | Example |
+  |---|---|---|
+  | The idea | What it's for | "A stem separation tool" |
+  | Core parts | The major parts and how they relate | Load a song → Split into stems → Listen / Save |
+  | How it works | Behaviour and data flow | Model file → runtime library → 10-second pieces → stems |
+  | Functions | Units of work, with code inside | `run(model, chunk)`. Optional, never required |
+
+- **A decision ledger.** Every choice the AI made for you sits in one place, with its reasoning and alternatives. That includes approaches it picked, defaults it applied when you skipped a question, and parts it added that you never described. Each entry is marked *to review*, *accepted* or *you changed it*. That is your high-level overview of the whole system.
+
+![Decision ledger: every AI choice with reasoning and review state](docs/media/decision-ledger.png)
+
+## How decisions are split
+
+| | Who decides | What happens |
+|---|---|---|
+| **You must decide** | Only you: product, business, legal | The AI will not guess. Nothing is built around the gap. |
+| **Question** | You, if you want | Skip it and the AI uses a stated default, recorded in the ledger. |
+| **AI decision** | The AI proposes, you rule | Accept it, or pick an alternative. The parts beneath reshape to match. |
+| **Suggestion** | Optional | Something the AI noticed. Add it or dismiss it. |
+
+## What's in this repository
+
+| Path | What it is | Status |
+|---|---|---|
+| [`src/`](src) | **The graph core.** Zero-dependency TypeScript engine: layered nodes, flow edges, conditional parts, decisions, ledger, needs, level-of-detail views, validation, audit log. | Working, tested |
+| [`demo/`](demo) | **Architect view.** Interactive web app running on the core. [Live](https://belovedtemitope.github.io/abstractCORE/demo/). | Working |
+| [`examples/`](examples) | Two sample projects as `.acore.json` files, one from each prototype, running on the same engine. | Working |
+| [`schema/`](schema/abstractcore.schema.json) | JSON Schema for the project file format. | v0.1 |
+| `acore` CLI | `status`, `tree --depth N`, `ledger`, `next`, `answer`, `skip`, `accept`, `override`, `mermaid`, `validate`. | Working |
+| [`prototype/`](prototype) | The two original interactive prototypes the core was extracted from. | Preserved as-is |
+
+The AI in the demo is a **prepared sample**: the AI's decisions are already in the example files. Live model integration, where you describe intent and an LLM proposes the graph, is the next milestone. See [ROADMAP.md](ROADMAP.md).
+
+## Quick start
+
+```bash
+git clone https://github.com/BelovedTemitope/abstractCORE && cd abstractCORE
+npm install && npm run build
+
+node dist/cli.js status  examples/stem-splitter.acore.json
+node dist/cli.js tree    examples/stem-splitter.acore.json --depth 1
+node dist/cli.js override examples/stem-splitter.acore.json split 0   # run on the user's computer instead
+node dist/cli.js ledger  examples/stem-splitter.acore.json
+```
+
+```
+A stem separation tool (you)
+└ Load a song (you)  [AI decision]
+    ↳ Reads WAV, MP3 and FLAC files.
+└ Split into stems (you)  [your change]  (+8 more detailed)
+    ↳ Runs an AI model on the user's computer.
+└ Listen to each stem (you)  [AI decision]
+└ Save the stems (you)  [AI decision]
+```
+
+As a library (npm package coming; for now import from `dist/`):
+
+```ts
+import { load, answer, overrideDecision, ledger, status, toMermaid } from "./dist/index.js";
+
+let p = load(json);
+p = answer(p, "idea", "platform", "web");      // every operation returns a new project
+p = overrideDecision(p, "split", 0);           // and appends to the audit log
+ledger(p);                                     // every AI choice and whether you reviewed it
+status(p).openMust;                            // what still needs you
+toMermaid(p, { maxDepth: 1 });                 // diagram at the level of detail you want
+```
+
+Run the tests with `npm test`. Rebuild the demo with `npm run demo`.
 
 ## Prototypes
 
-Both are single self-contained HTML files. Open them in any modern browser; nothing to install. The AI behaviour in them is scripted to demonstrate the interaction model, not live model calls.
+The first explorations, kept unchanged. Their two models, broad-to-specific questions and an AI-completed graph with labelled decisions, are what `src/` unifies.
 
-| Prototype | What it shows |
-|---|---|
-| [`prototype/idea-tree`](prototype/idea-tree/index.html) | Describing a product **from broad to specific** as a tree. Each answer can grow a more detailed child node. Questions are split into *"You must decide"* (the AI will not guess), *questions* with stated defaults, and optional *AI suggestions*. A "What it needs" view turns answers into the concrete requirements they imply. Sample: an online clothing store. |
-| [`prototype/idea-graph-studio`](prototype/idea-graph-studio/index.html) | A **node graph studio** with two lenses: **Ideas** (the nodes you described, nested and connected by data-flow edges) and **System** (a complete version the AI keeps in the background, filling every gap and labelling each AI decision with its reasoning and alternatives). Overriding a decision re-shapes the graph; nodes open down to readable code sketches. Sample: an audio stem separation tool. |
-
-## Principles
-
-- **Abstraction first.** Every level of the graph should be understandable on its own, without reading the level below.
-- **Show who decided what.** Your nodes, AI-filled nodes and AI decisions are visibly distinct.
-- **Don't guess what isn't the AI's to decide.** Business, legal and product choices are surfaced as questions, not silently defaulted.
-- **Everything is changeable at the level it was made.** Change an idea node and the layers beneath follow.
-- **Stop anywhere, keep what you have.** The graph is always a coherent, exportable whole.
+- [`prototype/idea-tree`](https://belovedtemitope.github.io/abstractCORE/prototype/idea-tree/): describe a product from broad to specific (sample: online clothing store).
+- [`prototype/idea-graph-studio`](https://belovedtemitope.github.io/abstractCORE/prototype/idea-graph-studio/): Ideas and System lenses (sample: stem separation tool).
 
 ## Documentation
 
-- [docs/architecture.md](docs/architecture.md) – the layered graph model and intended architecture.
-- [ROADMAP.md](ROADMAP.md) – what exists, what is next.
-- [CONTRIBUTING.md](CONTRIBUTING.md) – how to get involved.
+- [docs/architecture.md](docs/architecture.md): the model and how the engine works
+- [ROADMAP.md](ROADMAP.md): what exists and what's next
+- [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## License
 
